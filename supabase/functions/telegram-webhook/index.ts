@@ -202,7 +202,7 @@ Or just send a message to chat with OPTIMUS AI.`;
           responseText = "⚠️ Connection error. Please try again.";
         }
       } else {
-        responseText = "⚠️ Your Telegram is not linked to OPTIMUS. Connect via Settings > Integrations in the app.";
+        responseText = "⚠️ Your Telegram is not linked to OPTIMUS. Send /start with your link code to connect.";
       }
     }
 
