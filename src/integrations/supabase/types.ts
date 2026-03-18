@@ -16,42 +16,67 @@ export type Database = {
     Tables: {
       agent_runs: {
         Row: {
+          agent_mode: string | null
           agent_type: string
           completed_at: string | null
+          confidence: number | null
           error_message: string | null
           id: string
           input: Json | null
+          input_json: Json | null
           output: Json | null
+          output_json: Json | null
+          session_id: string | null
           started_at: string
           status: string
           task_id: string | null
+          task_type: string | null
           user_id: string
         }
         Insert: {
+          agent_mode?: string | null
           agent_type: string
           completed_at?: string | null
+          confidence?: number | null
           error_message?: string | null
           id?: string
           input?: Json | null
+          input_json?: Json | null
           output?: Json | null
+          output_json?: Json | null
+          session_id?: string | null
           started_at?: string
           status?: string
           task_id?: string | null
+          task_type?: string | null
           user_id: string
         }
         Update: {
+          agent_mode?: string | null
           agent_type?: string
           completed_at?: string | null
+          confidence?: number | null
           error_message?: string | null
           id?: string
           input?: Json | null
+          input_json?: Json | null
           output?: Json | null
+          output_json?: Json | null
+          session_id?: string | null
           started_at?: string
           status?: string
           task_id?: string | null
+          task_type?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_runs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_runs_task_id_fkey"
             columns: ["task_id"]
@@ -64,36 +89,51 @@ export type Database = {
       approvals: {
         Row: {
           created_at: string
+          decided_at: string | null
           description: string | null
           id: string
+          payload_json: Json | null
           resolved_at: string | null
           risk_level: string | null
           source: string | null
+          source_id: string | null
+          source_type: string | null
           status: string
+          summary: string | null
           title: string
           user_id: string
           workflow_run_id: string | null
         }
         Insert: {
           created_at?: string
+          decided_at?: string | null
           description?: string | null
           id?: string
+          payload_json?: Json | null
           resolved_at?: string | null
           risk_level?: string | null
           source?: string | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string
+          summary?: string | null
           title: string
           user_id: string
           workflow_run_id?: string | null
         }
         Update: {
           created_at?: string
+          decided_at?: string | null
           description?: string | null
           id?: string
+          payload_json?: Json | null
           resolved_at?: string | null
           risk_level?: string | null
           source?: string | null
+          source_id?: string | null
+          source_type?: string | null
           status?: string
+          summary?: string | null
           title?: string
           user_id?: string
           workflow_run_id?: string | null
@@ -108,8 +148,137 @@ export type Database = {
           },
         ]
       }
+      atlas_workflow_runs: {
+        Row: {
+          completed_at: string | null
+          current_step_index: number | null
+          error_message: string | null
+          id: string
+          initiated_by: string | null
+          input_json: Json | null
+          output_json: Json | null
+          source: string | null
+          started_at: string
+          status: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          current_step_index?: number | null
+          error_message?: string | null
+          id?: string
+          initiated_by?: string | null
+          input_json?: Json | null
+          output_json?: Json | null
+          source?: string | null
+          started_at?: string
+          status?: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          current_step_index?: number | null
+          error_message?: string | null
+          id?: string
+          initiated_by?: string | null
+          input_json?: Json | null
+          output_json?: Json | null
+          source?: string | null
+          started_at?: string
+          status?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atlas_workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "atlas_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atlas_workflow_steps: {
+        Row: {
+          config_json: Json | null
+          created_at: string
+          id: string
+          step_order: number
+          step_type: string
+          title: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          config_json?: Json | null
+          created_at?: string
+          id?: string
+          step_order?: number
+          step_type: string
+          title?: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          config_json?: Json | null
+          created_at?: string
+          id?: string
+          step_order?: number
+          step_type?: string
+          title?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atlas_workflow_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "atlas_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atlas_workflows: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          trigger_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          trigger_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          trigger_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
+          attachments_json: Json | null
+          citations_json: Json | null
           content: string
           created_at: string
           id: string
@@ -119,6 +288,8 @@ export type Database = {
           session_id: string
         }
         Insert: {
+          attachments_json?: Json | null
+          citations_json?: Json | null
           content: string
           created_at?: string
           id?: string
@@ -128,6 +299,8 @@ export type Database = {
           session_id: string
         }
         Update: {
+          attachments_json?: Json | null
+          citations_json?: Json | null
           content?: string
           created_at?: string
           id?: string
@@ -151,6 +324,7 @@ export type Database = {
           created_at: string
           id: string
           mode: string | null
+          status: string | null
           title: string | null
           updated_at: string
           user_id: string
@@ -159,6 +333,7 @@ export type Database = {
           created_at?: string
           id?: string
           mode?: string | null
+          status?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
@@ -167,6 +342,7 @@ export type Database = {
           created_at?: string
           id?: string
           mode?: string | null
+          status?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
@@ -223,24 +399,30 @@ export type Database = {
       integrations: {
         Row: {
           config: Json | null
+          config_json: Json | null
           created_at: string
           id: string
+          provider: string | null
           service_name: string
           status: string | null
           user_id: string
         }
         Insert: {
           config?: Json | null
+          config_json?: Json | null
           created_at?: string
           id?: string
+          provider?: string | null
           service_name: string
           status?: string | null
           user_id: string
         }
         Update: {
           config?: Json | null
+          config_json?: Json | null
           created_at?: string
           id?: string
+          provider?: string | null
           service_name?: string
           status?: string | null
           user_id?: string
@@ -285,31 +467,43 @@ export type Database = {
       }
       notifications: {
         Row: {
+          body: string | null
+          channel: string | null
           created_at: string
           id: string
           link: string | null
           message: string | null
+          payload_json: Json | null
           read: boolean | null
+          status: string | null
           title: string
           type: string | null
           user_id: string
         }
         Insert: {
+          body?: string | null
+          channel?: string | null
           created_at?: string
           id?: string
           link?: string | null
           message?: string | null
+          payload_json?: Json | null
           read?: boolean | null
+          status?: string | null
           title: string
           type?: string | null
           user_id: string
         }
         Update: {
+          body?: string | null
+          channel?: string | null
           created_at?: string
           id?: string
           link?: string | null
           message?: string | null
+          payload_json?: Json | null
           read?: boolean | null
+          status?: string | null
           title?: string
           type?: string | null
           user_id?: string
@@ -322,8 +516,11 @@ export type Database = {
           company: string | null
           created_at: string
           display_name: string | null
+          full_name: string | null
           id: string
           job_title: string | null
+          preferences_json: Json | null
+          role: string | null
           timezone: string | null
           updated_at: string
           user_id: string
@@ -333,8 +530,11 @@ export type Database = {
           company?: string | null
           created_at?: string
           display_name?: string | null
+          full_name?: string | null
           id?: string
           job_title?: string | null
+          preferences_json?: Json | null
+          role?: string | null
           timezone?: string | null
           updated_at?: string
           user_id: string
@@ -344,8 +544,11 @@ export type Database = {
           company?: string | null
           created_at?: string
           display_name?: string | null
+          full_name?: string | null
           id?: string
           job_title?: string | null
+          preferences_json?: Json | null
+          role?: string | null
           timezone?: string | null
           updated_at?: string
           user_id?: string
@@ -437,6 +640,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      telegram_connections: {
+        Row: {
+          bot_name: string | null
+          chat_id: number | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_name?: string | null
+          chat_id?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_name?: string | null
+          chat_id?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      telegram_messages: {
+        Row: {
+          chat_id: number
+          created_at: string
+          direction: string
+          id: string
+          message_text: string | null
+          raw_payload_json: Json | null
+          user_id: string
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          direction: string
+          id?: string
+          message_text?: string | null
+          raw_payload_json?: Json | null
+          user_id: string
+        }
+        Update: {
+          chat_id?: number
+          created_at?: string
+          direction?: string
+          id?: string
+          message_text?: string | null
+          raw_payload_json?: Json | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
