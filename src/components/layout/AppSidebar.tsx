@@ -28,7 +28,7 @@ const navItems = [
   { title: "Command Center", url: "/", icon: LayoutDashboard },
   { title: "Optimus Chat", url: "/chat", icon: MessageSquare },
   { title: "Mission Queue", url: "/tasks", icon: CheckSquare },
-  { title: "Flow Engine", url: "/workflows", icon: Workflow },
+  { title: "ATLAS Engine", url: "/workflows", icon: Workflow },
   { title: "Knowledge Vault", url: "/memory", icon: Brain },
   { title: "Communications", url: "/email", icon: Mail },
   { title: "Documents", url: "/documents", icon: FileText },

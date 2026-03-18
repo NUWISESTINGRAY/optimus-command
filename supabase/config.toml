@@ -1,1 +1,13 @@
 project_id = "aguamdcgtthxoaccjjou"
+
+[functions.optimus-chat]
+verify_jwt = false
+
+[functions.atlas-run-workflow]
+verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
+
+[functions.telegram-send-message]
+verify_jwt = false
