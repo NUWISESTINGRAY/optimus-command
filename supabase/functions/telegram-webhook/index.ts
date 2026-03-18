@@ -62,7 +62,62 @@ serve(async (req) => {
 
     if (isCommand) {
       const command = text.split(" ")[0].toLowerCase();
+      const args = text.split(" ").slice(1).join(" ").trim();
+
       switch (command) {
+        case "/start": {
+          if (!args) {
+            responseText = "👋 Welcome to OPTIMUS!\n\nTo link your account, go to Settings > Integrations in the OPTIMUS app, generate a link code, then send:\n`/start <your-code>`";
+            break;
+          }
+          // Look up the link code
+          const { data: linkCode, error: lcErr } = await supabase
+            .from("telegram_link_codes")
+            .select("user_id, expires_at, used")
+            .eq("code", args)
+            .single();
+
+          if (lcErr || !linkCode) {
+            responseText = "❌ Invalid link code. Please generate a new one in Settings > Integrations.";
+            break;
+          }
+          if (linkCode.used) {
+            responseText = "❌ This code has already been used. Generate a new one.";
+            break;
+          }
+          if (new Date(linkCode.expires_at) < new Date()) {
+            responseText = "❌ This code has expired. Generate a new one in Settings > Integrations.";
+            break;
+          }
+
+          // Mark code as used
+          await supabase
+            .from("telegram_link_codes")
+            .update({ used: true })
+            .eq("code", args);
+
+          // Upsert telegram connection
+          const { error: connErr } = await supabase
+            .from("telegram_connections")
+            .upsert(
+              {
+                user_id: linkCode.user_id,
+                chat_id: chatId,
+                bot_name: fromUser,
+                is_active: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id" }
+            );
+
+          if (connErr) {
+            console.error("Connection upsert error:", connErr);
+            responseText = "⚠️ Failed to link your account. Please try again.";
+          } else {
+            responseText = "✅ *Account linked successfully!*\n\nYou can now use OPTIMUS via Telegram. Type /help to see available commands.";
+          }
+          break;
+        }
         case "/brief":
           responseText = "📊 *Daily Brief*\nFetching your daily intelligence report...";
           break;
@@ -80,7 +135,7 @@ serve(async (req) => {
             responseText = "✅ *Active Tasks:*\n" +
               (tasks?.map((t: any) => `• [${t.priority}] ${t.title} — _${t.status}_`).join("\n") || "No tasks found.");
           } else {
-            responseText = "⚠️ Your Telegram is not linked to an OPTIMUS account. Use the app to connect.";
+            responseText = "⚠️ Your Telegram is not linked to an OPTIMUS account. Send /start to connect.";
           }
           break;
         case "/workflow":
@@ -97,11 +152,12 @@ serve(async (req) => {
             responseText = "🛡️ *Pending Approvals:*\n" +
               (approvals?.map((a: any) => `• [${a.risk_level}] ${a.title}`).join("\n") || "No pending approvals.");
           } else {
-            responseText = "⚠️ Your Telegram is not linked to an OPTIMUS account.";
+            responseText = "⚠️ Your Telegram is not linked to an OPTIMUS account. Send /start to connect.";
           }
           break;
         case "/help":
           responseText = `🤖 *OPTIMUS Commands:*
+/start <code> — Link your OPTIMUS account
 /brief — Daily intelligence brief
 /summarize — Summarize text
 /tasks — View active tasks
