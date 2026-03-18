@@ -225,11 +225,26 @@ export default function SettingsPage() {
                   <div className="mt-3 space-y-2">
                     <p className="text-xs text-muted-foreground">To connect Telegram:</p>
                     <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                      <li>Create a bot via @BotFather on Telegram</li>
-                      <li>Connect the Telegram integration in workspace settings</li>
-                      <li>Send /start to your bot to link your chat</li>
+                      <li>Generate a link code below</li>
+                      <li>Open your OPTIMUS bot on Telegram</li>
+                      <li>Send <code className="text-primary">/start YOUR_CODE</code> to the bot</li>
                     </ol>
-                    <button className="command-btn text-xs mt-2">Connect Telegram</button>
+                    {linkCode ? (
+                      <div className="mt-2 p-3 rounded-md bg-primary/10 border border-primary/20">
+                        <p className="text-xs text-muted-foreground mb-1">Your link code (expires in 10 minutes):</p>
+                        <p className="text-lg font-mono font-bold text-primary tracking-widest">{linkCode}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Send <code className="text-primary">/start {linkCode}</code> to your bot</p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={generateLinkCode}
+                        disabled={generatingCode}
+                        className="command-btn text-xs mt-2 flex items-center gap-2"
+                      >
+                        {generatingCode && <Loader2 className="w-3 h-3 animate-spin" />}
+                        Generate Link Code
+                      </button>
+                    )}
                   </div>
                 )}
                 {telegramConnection && (
