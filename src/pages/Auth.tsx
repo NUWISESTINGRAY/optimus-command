@@ -2,14 +2,44 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Zap, ArrowRight, Mail, Lock, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/");
+    setLoading(true);
+
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName },
+            emailRedirectTo: window.location.origin,
+          },
+        });
+        if (error) throw error;
+        toast({ title: "Account created", description: "Check your email to verify your account." });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate("/");
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -19,7 +49,6 @@ export default function Auth() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center mx-auto mb-4">
             <Zap className="w-7 h-7 text-primary" />
@@ -28,7 +57,6 @@ export default function Auth() {
           <p className="text-xs text-muted-foreground tracking-widest uppercase mt-1">Executive AI Operating System</p>
         </div>
 
-        {/* Card */}
         <div className="glass-panel p-8">
           <h2 className="text-lg font-display font-semibold text-foreground mb-1">
             {mode === "signin" ? "Welcome back" : "Create account"}
@@ -45,6 +73,8 @@ export default function Auth() {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     placeholder="Your name"
                     className="w-full pl-10 pr-4 py-2.5 rounded-md bg-secondary/50 border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
                   />
@@ -57,7 +87,10 @@ export default function Auth() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
+                  required
                   className="w-full pl-10 pr-4 py-2.5 rounded-md bg-secondary/50 border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
                 />
               </div>
@@ -68,17 +101,22 @@ export default function Auth() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
+                  minLength={6}
                   className="w-full pl-10 pr-4 py-2.5 rounded-md bg-secondary/50 border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 transition-colors"
                 />
               </div>
             </div>
             <button
               type="submit"
-              className="w-full py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {mode === "signin" ? "Sign In" : "Create Account"}
-              <ArrowRight className="w-4 h-4" />
+              {loading ? "Processing..." : mode === "signin" ? "Sign In" : "Create Account"}
+              {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
 
