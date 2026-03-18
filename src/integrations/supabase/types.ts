@@ -14,16 +14,569 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_runs: {
+        Row: {
+          agent_type: string
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          input: Json | null
+          output: Json | null
+          started_at: string
+          status: string
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          agent_type: string
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          started_at?: string
+          status?: string
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          agent_type?: string
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          input?: Json | null
+          output?: Json | null
+          started_at?: string
+          status?: string
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approvals: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          resolved_at: string | null
+          risk_level: string | null
+          source: string | null
+          status: string
+          title: string
+          user_id: string
+          workflow_run_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          resolved_at?: string | null
+          risk_level?: string | null
+          source?: string | null
+          status?: string
+          title: string
+          user_id: string
+          workflow_run_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          resolved_at?: string | null
+          risk_level?: string | null
+          source?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+          workflow_run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approvals_workflow_run_id_fkey"
+            columns: ["workflow_run_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          mode: string | null
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          mode?: string | null
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          mode?: string | null
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          mode: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mode?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mode?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          doc_type: string | null
+          id: string
+          project_id: string | null
+          status: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          doc_type?: string | null
+          id?: string
+          project_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          doc_type?: string | null
+          id?: string
+          project_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          service_name: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          service_name: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          service_name?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      memory_items: {
+        Row: {
+          category: string | null
+          content: string | null
+          created_at: string
+          id: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          use_in_ai_context: boolean | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          use_in_ai_context?: boolean | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          use_in_ai_context?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          link: string | null
+          message: string | null
+          read: boolean | null
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          message?: string | null
+          read?: boolean | null
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          message?: string | null
+          read?: boolean | null
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          job_title: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          job_title?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          job_title?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          assignee: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string | null
+          project_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignee?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignee?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          project_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workflow_runs: {
+        Row: {
+          completed_at: string | null
+          id: string
+          result: Json | null
+          started_at: string
+          status: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          result?: Json | null
+          started_at?: string
+          status?: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          result?: Json | null
+          started_at?: string
+          status?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_steps: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          step_order: number
+          step_type: string
+          title: string
+          workflow_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          step_order?: number
+          step_type: string
+          title: string
+          workflow_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          step_order?: number
+          step_type?: string
+          title?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          status: string
+          title: string
+          trigger_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          title: string
+          trigger_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          title?: string
+          trigger_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "member" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +703,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "member", "viewer"],
+    },
   },
 } as const
