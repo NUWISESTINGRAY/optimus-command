@@ -85,6 +85,22 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
+  const generateLinkCode = async () => {
+    setGeneratingCode(true);
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const { error } = await supabase.from("telegram_link_codes" as any).insert({
+      user_id: user!.id,
+      code,
+    } as any);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setLinkCode(code);
+      toast({ title: "Link code generated", description: `Send /start ${code} to your bot.` });
+    }
+    setGeneratingCode(false);
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
       <div className="flex items-center justify-between">
