@@ -36,6 +36,8 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [telegramConnection, setTelegramConnection] = useState<any>(null);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   useEffect(() => {
     if (user) {
