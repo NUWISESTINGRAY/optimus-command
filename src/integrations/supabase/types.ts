@@ -275,6 +275,228 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_edges: {
+        Row: {
+          created_at: string
+          id: string
+          source_handle: string | null
+          source_node_key: string
+          target_handle: string | null
+          target_node_key: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source_handle?: string | null
+          source_node_key: string
+          target_handle?: string | null
+          target_node_key: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source_handle?: string | null
+          source_node_key?: string
+          target_handle?: string | null
+          target_node_key?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_edges_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_node_runs: {
+        Row: {
+          completed_at: string | null
+          error: string | null
+          id: string
+          input_json: Json
+          node_key: string
+          output_json: Json
+          run_id: string
+          started_at: string
+          status: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error?: string | null
+          id?: string
+          input_json?: Json
+          node_key: string
+          output_json?: Json
+          run_id: string
+          started_at?: string
+          status?: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error?: string | null
+          id?: string
+          input_json?: Json
+          node_key?: string
+          output_json?: Json
+          run_id?: string
+          started_at?: string
+          status?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_node_runs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "automation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_node_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_nodes: {
+        Row: {
+          config_json: Json
+          created_at: string
+          id: string
+          node_key: string
+          position_x: number
+          position_y: number
+          type: string
+          workflow_id: string
+        }
+        Insert: {
+          config_json?: Json
+          created_at?: string
+          id?: string
+          node_key: string
+          position_x?: number
+          position_y?: number
+          type: string
+          workflow_id: string
+        }
+        Update: {
+          config_json?: Json
+          created_at?: string
+          id?: string
+          node_key?: string
+          position_x?: number
+          position_y?: number
+          type?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_nodes_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          completed_at: string | null
+          error: string | null
+          id: string
+          input_json: Json
+          output_json: Json
+          started_at: string
+          status: string
+          trigger_source: string
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error?: string | null
+          id?: string
+          input_json?: Json
+          output_json?: Json
+          started_at?: string
+          status?: string
+          trigger_source?: string
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error?: string | null
+          id?: string
+          input_json?: Json
+          output_json?: Json
+          started_at?: string
+          status?: string
+          trigger_source?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_workflows: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          last_run_at: string | null
+          name: string
+          schedule_cron: string | null
+          telegram_filter: string | null
+          trigger_type: string
+          updated_at: string
+          user_id: string
+          webhook_token: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          schedule_cron?: string | null
+          telegram_filter?: string | null
+          trigger_type?: string
+          updated_at?: string
+          user_id: string
+          webhook_token?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          schedule_cron?: string | null
+          telegram_filter?: string | null
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+          webhook_token?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           attachments_json: Json | null
@@ -864,6 +1086,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_owns_automation: { Args: { _workflow_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "member" | "viewer"
