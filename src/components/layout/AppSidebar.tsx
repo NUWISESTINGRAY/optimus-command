@@ -10,6 +10,7 @@ import {
   Activity,
   Settings,
   Zap,
+  GitBranch,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -29,6 +30,7 @@ const navItems = [
   { title: "Optimus Chat", url: "/chat", icon: MessageSquare },
   { title: "Mission Queue", url: "/tasks", icon: CheckSquare },
   { title: "ATLAS Engine", url: "/workflows", icon: Workflow },
+  { title: "Automations", url: "/automations", icon: GitBranch },
   { title: "Knowledge Vault", url: "/memory", icon: Brain },
   { title: "Communications", url: "/email", icon: Mail },
   { title: "Documents", url: "/documents", icon: FileText },

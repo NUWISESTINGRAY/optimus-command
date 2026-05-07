@@ -10,6 +10,9 @@ import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
 import Tasks from "./pages/Tasks";
 import Workflows from "./pages/Workflows";
+import AutomationsList from "./pages/automations/AutomationsList";
+import AutomationBuilder from "./pages/automations/AutomationBuilder";
+import AutomationRuns from "./pages/automations/AutomationRuns";
 import Memory from "./pages/Memory";
 import EmailPage from "./pages/Email";
 import Documents from "./pages/Documents";
@@ -35,6 +38,9 @@ const App = () => (
               <Route path="/chat" element={<Chat />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/workflows" element={<Workflows />} />
+              <Route path="/automations" element={<AutomationsList />} />
+              <Route path="/automations/:id" element={<AutomationBuilder />} />
+              <Route path="/automations/:id/runs" element={<AutomationRuns />} />
               <Route path="/memory" element={<Memory />} />
               <Route path="/email" element={<EmailPage />} />
               <Route path="/documents" element={<Documents />} />
