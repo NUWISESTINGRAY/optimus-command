@@ -171,6 +171,22 @@ Or just send a message to chat with OPTIMUS AI.`;
           responseText = "Unknown command. Type /help for available commands.";
       }
     } else {
+      // Dispatch telegram-triggered automations (fire and forget)
+      if (userId) {
+        try {
+          const { data: autos } = await supabase.from("automation_workflows")
+            .select("id, telegram_filter")
+            .eq("user_id", userId).eq("active", true).eq("trigger_type", "telegram");
+          for (const a of (autos || [])) {
+            if (a.telegram_filter && !text.includes(a.telegram_filter)) continue;
+            fetch(`${supabaseUrl}/functions/v1/automation-run`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+              body: JSON.stringify({ workflow_id: a.id, trigger_source: "telegram", input: { text, chat_id: chatId, from: fromUser } }),
+            }).catch(() => {});
+          }
+        } catch (e) { console.error("telegram auto-dispatch:", e); }
+      }
       // Route to Optimus AI
       if (userId) {
         try {
