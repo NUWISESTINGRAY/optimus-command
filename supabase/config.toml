@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.telegram-set-webhook]
 verify_jwt = false
+
+[functions.automation-run]
+verify_jwt = false
+
+[functions.automation-webhook]
+verify_jwt = false
+
+[functions.automation-scheduler]
+verify_jwt = false
