@@ -11,6 +11,7 @@ import {
   Settings,
   Zap,
   GitBranch,
+  Brain as BrainIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -31,6 +32,7 @@ const navItems = [
   { title: "Mission Queue", url: "/tasks", icon: CheckSquare },
   { title: "ATLAS Engine", url: "/workflows", icon: Workflow },
   { title: "Automations", url: "/automations", icon: GitBranch },
+  { title: "JWBA Workspace", url: "/workspace", icon: BrainIcon },
   { title: "Knowledge Vault", url: "/memory", icon: Brain },
   { title: "Communications", url: "/email", icon: Mail },
   { title: "Documents", url: "/documents", icon: FileText },

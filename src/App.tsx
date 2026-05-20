@@ -21,6 +21,11 @@ import Logs from "./pages/Logs";
 import SettingsPage from "./pages/SettingsPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { JwbaLayout } from "./jwba/JwbaLayout";
+import DailyRedirect from "./jwba/pages/DailyRedirect";
+import DailyPage from "./jwba/pages/DailyPage";
+import PageRoute from "./jwba/pages/PageRoute";
+import GraphView from "./jwba/pages/GraphView";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +52,12 @@ const App = () => (
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/logs" element={<Logs />} />
               <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+            <Route element={<ProtectedRoute><JwbaLayout /></ProtectedRoute>}>
+              <Route path="/workspace" element={<DailyRedirect />} />
+              <Route path="/workspace/daily/:date" element={<DailyPage />} />
+              <Route path="/workspace/page/:id" element={<PageRoute />} />
+              <Route path="/workspace/graph" element={<GraphView />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

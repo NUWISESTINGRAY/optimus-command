@@ -1,100 +1,136 @@
-## Goal
 
-Turn the existing ATLAS Flow Engine into a true n8n-style automation builder: drag-and-drop node canvas, large library of integration nodes, multiple trigger types, and full server-side execution in Lovable Cloud.
+# JWBA Workspace — Implementation Plan
 
-## What gets built
+A Roam/Logseq-style knowledge workspace layered on top of OPTIMUS, with daily notes, an outliner editor, agent blocks, bidirectional references, real-time sync, a graph view, and a Telegram bridge.
 
-### 1. Visual node canvas (React Flow)
+## 1. Database (new migration)
 
-Replace the current step-list editor on `/workflows` with a drag-and-drop canvas:
+New tables (all RLS-scoped to `auth.uid()` via `created_by` / `tenant_id = auth.uid()`):
 
-- **Library**: `@xyflow/react` (React Flow) — industry standard, what n8n itself is built on conceptually.
-- **Canvas features**: pan, zoom, minimap, drag nodes, connect node outputs → inputs via edges, multi-select, delete with key, auto-layout button.
-- **Node sidebar (left)**: searchable palette of all node types, drag onto canvas to add.
-- **Inspector (right)**: opens when a node is selected; shows config form generated from the node type's schema (text, select, JSON, code, credential picker).
-- **Top bar**: workflow name, Active/Inactive toggle, Save, Test Run, Open Run History.
-- **Run overlay**: when a run executes (or replay from history), nodes light up green/red/yellow with output preview on hover.
+- `jwba_pages` — id, title (unique per tenant), is_daily, daily_date, tenant_id, created_at, updated_at
+- `jwba_blocks` — id, page_id, parent_id (nullable, self-FK), sort_order (float for cheap reordering), content, block_type ('text'|'agent'|'decision'|'reference'|'file'), agent_codename, agent_output_id, telegram_message_id, created_by, created_at, updated_at
+- `jwba_block_refs` — id, source_block_id, target_block_id (nullable), target_page_id (nullable), ref_type ('page'|'block'), created_at
+- `jwba_agents` — codename (PK), display_name, color, spec jsonb, status ('idle'|'working'|'error'), telegram_command, sort_order
+- `jwba_agent_outputs` — id, agent_codename, project_id (nullable), source_block_id, payload jsonb, status, created_at
+- `jwba_agent_state` — project_id, telegram_chat_id, active_agent, context_page_id, updated_at
 
-### 2. Node library
+Seeded data on first user signup (extend `handle_new_user`):
+- 11 agents with codenames/colors (Optimus, Atlas, Mercury, Apollo, Hermes, Iris, Vulcan, Nyx, Orion, Helios, Selene)
+- A welcome page
 
-Triggers (per your selection):
-- Manual / Test
-- Schedule (cron expression)
-- Webhook (auto-generates a public URL `/functions/v1/wf-webhook/{token}`)
-- Telegram message received (hooks existing telegram-webhook)
-- Email received (placeholder hook for later email integration)
-- DB event (insert/update on a chosen table via Postgres triggers → pg_net)
+Realtime: add `jwba_blocks`, `jwba_pages`, `jwba_agent_outputs` to `supabase_realtime` publication.
 
-Actions / Logic:
-- HTTP Request (GET/POST/etc, headers, body, auth)
-- Set / Transform (map fields with JS expression)
-- IF / Switch (branching with multiple outputs)
-- Loop over items
-- Wait / Delay
-- Merge branches
-- AI Action (Lovable AI Gateway, prompt template, model picker)
-- Approval gate (existing approvals table)
-- Send Telegram message
-- Create Task / Document / Notification (existing tables)
-- Run sub-workflow
-- Call n8n workflow (uses MCP `execute_workflow` via the existing n8n integration)
+Indexes: `jwba_blocks(page_id, parent_id, sort_order)`, `jwba_block_refs(target_page_id)`, `jwba_block_refs(target_block_id)`, `jwba_pages(tenant_id, daily_date)`.
 
-Each node type is declared in `src/lib/nodes/registry.ts` with: `type`, `category`, `icon`, `inputs`, `outputs`, `configSchema` (Zod), `defaults`. The canvas + inspector are fully driven by this registry, so adding a node later = one file edit.
+## 2. Routes
 
-### 3. Database changes
+Mounted in `src/App.tsx` under a new `JwbaLayout` (separate three-pane shell, not the OPTIMUS sidebar):
 
-New tables (migration):
+- `/workspace` → redirect to `/workspace/daily/<today>`
+- `/workspace/daily/:date` — daily note (auto-create on visit)
+- `/workspace/page/:id` — any page
+- `/workspace/graph` — force-directed graph
 
-- `automation_workflows` — `id`, `user_id`, `name`, `description`, `active`, `trigger_type`, `webhook_token` (unique, nullable), `schedule_cron` (nullable), `created_at`, `updated_at`.
-- `automation_nodes` — `id`, `workflow_id`, `node_key` (stable id used in edges), `type`, `position_x`, `position_y`, `config_json`.
-- `automation_edges` — `id`, `workflow_id`, `source_node_key`, `source_handle`, `target_node_key`, `target_handle`.
-- `automation_runs` — `id`, `workflow_id`, `status` (running/completed/failed/paused), `trigger_source`, `input_json`, `output_json`, `error`, `started_at`, `completed_at`.
-- `automation_node_runs` — `id`, `run_id`, `node_key`, `status`, `input_json`, `output_json`, `error`, `started_at`, `completed_at`.
+OPTIMUS sidebar gets a new "JWBA Workspace" entry pointing to `/workspace`.
 
-All with RLS scoped to `user_id` (via `workflow_id` join for child tables). The existing `atlas_*` tables are left intact so current data is preserved; the new system lives under `/automations`.
+## 3. Components
 
-### 4. Edge functions
+```
+src/jwba/
+  JwbaLayout.tsx           — top bar + three-pane shell, dark/light toggle
+  TopBar.tsx               — logo, date, ⌘K search, Telegram status, user menu
+  LeftSidebar.tsx          — Daily / Pages / Agents sections, collapsible
+  RightSidebar.tsx         — Linked refs, Active agents, Open in Telegram
+  PageView.tsx             — page title + outliner + linked refs
+  Outliner.tsx             — recursive block tree
+  Block.tsx                — single editable block (contentEditable), drag handle, agent chip
+  SlashMenu.tsx            — "/" popover (agent, decision, reference, file)
+  PageLinkAutocomplete.tsx — "[[" popover
+  BlockRefAutocomplete.tsx — "((" popover
+  AgentChip.tsx            — per-agent colored chip
+  LinkedReferences.tsx     — backlinks list
+  GraphView.tsx            — react-force-graph
+  CommandPalette.tsx       — ⌘K
+  hooks/
+    usePage.ts, useBlocks.ts, useAgents.ts, useRealtimeBlocks.ts,
+    useBlockTree.ts, useKeyboardOutliner.ts
+  lib/
+    blockOps.ts            — indent/outdent/move/insert/delete + sort_order math
+    parseLinks.ts          — extract [[page]] and ((block)) refs, sync jwba_block_refs
+    api.ts                 — typed supabase queries
+```
 
-- `automation-run` — executes a workflow graph: builds DAG from nodes/edges, walks it from trigger, runs each node based on its `type`, persists `automation_node_runs`, supports pause-on-approval (resumes via `automation-resume`).
-- `automation-webhook` — public endpoint `automation-webhook/{token}`; looks up the workflow and invokes `automation-run` with the request body as trigger payload.
-- `automation-scheduler` — invoked every minute by pg_cron; queries active workflows with `trigger_type='schedule'` whose cron matches now, fires `automation-run`.
-- `automation-db-event` — generic endpoint called by Postgres triggers via `pg_net` for DB-event triggers.
-- Telegram: extend existing `telegram-webhook` to also dispatch matching `trigger_type='telegram'` workflows.
+## 4. Outliner mechanics
 
-### 5. Scheduling
+- Each block rendered as a `contentEditable` div (no heavy editor lib) with a left drag handle and a bullet.
+- Keyboard: Enter = sibling below, Shift+Enter = newline in block, Tab = indent (set parent_id to previous sibling), Shift+Tab = outdent, Backspace on empty = delete + merge focus to previous, ArrowUp/Down = move caret across blocks.
+- `sort_order` uses fractional indexing (midpoint between neighbors) to avoid mass renumbering.
+- Drag-and-drop via `@dnd-kit/core` (already common). Drop targets: above / below / as-child.
+- Debounced save (300ms) to `jwba_blocks.content`; on save, parse `[[…]]` and `((…))` and upsert `jwba_block_refs`.
+- "/" opens `SlashMenu` at caret; "[[" / "((" open autocomplete popovers fed by live page/block search.
 
-- Enable `pg_cron` + `pg_net`.
-- One pg_cron job calling `automation-scheduler` every minute (created via insert tool, not migration, since it embeds the project URL/anon key).
+## 5. Agent blocks
 
-### 6. UI structure
+- A block with `block_type='agent'` shows an `AgentChip` (color from `jwba_agents.color`) before content.
+- "Ask <agent>" action on a block calls edge function `jwba-route-to-agent` with `{ block_id, agent_codename, content, context_page_id }`. Function inserts a new child block (type=agent, pending) and triggers Telegram via existing `telegram-send-message`.
+- New edge function `jwba-agent-output-webhook` (or reuse Supabase trigger): when `jwba_agent_outputs` inserts, also insert a child block linked via `agent_output_id` under the requesting block. Implemented as a Postgres trigger calling a SECURITY DEFINER function (no extra HTTP roundtrip).
 
-- New route `/automations` — list of workflows with status, last run, run count.
-- New route `/automations/:id` — the canvas builder.
-- New route `/automations/:id/runs` — run history with per-node output inspector.
-- Sidebar nav: add "Automations" item; keep old "Workflows" (ATLAS) for backward compatibility, or hide behind a feature flag if you prefer.
+## 6. Realtime + animations
 
-## Technical details
+- One channel per page: `supabase.channel("jwba-page-${pageId}")` subscribed to `jwba_blocks` filtered by `page_id`.
+- New blocks animate in with a 200ms slide+fade (Tailwind `animate-slide-up`, already defined).
+- Agent status dots in left sidebar driven by a global channel on `jwba_agents` status updates.
 
-- **Engine**: Topological execution with per-node try/catch. Each node receives merged input from incoming edges; output is keyed by `node_key` so downstream nodes reference `{{nodes.previous.field}}` via simple string interpolation.
-- **Expressions**: Lightweight `{{path.to.value}}` resolver (no eval). For Transform node, run user JS inside a sandboxed `new Function()` with only the input object exposed.
-- **Webhook security**: random 32-char token in URL path; optional shared-secret header check configurable per workflow.
-- **Realtime**: subscribe to `automation_node_runs` on the canvas during a run so nodes light up live.
-- **Packages to add**: `@xyflow/react`, `cronstrue` (human-readable cron), `cron-parser` (next-run calc, used in edge function).
+## 7. Graph view (`/workspace/graph`)
 
-## Out of scope (call out now)
+- `react-force-graph-2d`. Nodes: all pages (large) + agent blocks (small). Edges: `jwba_block_refs`.
+- Color by `agent_codename` (fallback to page tag/none). Click node → navigate to its page.
+- Loads via a single Supabase query joining pages + agent blocks + refs.
 
-- Marketplace of pre-built community nodes.
-- OAuth credential manager UI (HTTP node will accept raw header/bearer for v1; OAuth-per-service can come later).
-- Versioning / workflow history diff.
-- The existing ATLAS Flow Engine pages stay as-is; this is a parallel new system. Say the word if you want them removed once the new one is stable.
+## 8. Daily notes
 
-## Build order
+- `/workspace` auto-resolves today's date in user's timezone and redirects.
+- `getOrCreateDailyPage(date)` helper: select by `(tenant_id, daily_date)`; if missing, insert with `is_daily=true, title=<formatted date>`.
 
-1. Migration: new tables + RLS + indexes.
-2. Node registry + types.
-3. `/automations` list page + create/delete.
-4. Canvas builder page with React Flow, palette, inspector, save.
-5. `automation-run` edge function with core node executors.
-6. Test Run button + live highlight via realtime.
-7. Webhook + scheduler + Telegram trigger wiring.
-8. Run history page.
+## 9. Styling
+
+- Tailwind only, semantic tokens via existing `index.css`. Add a `--jwba-paper` light surface and a `[data-theme="light"]` override scoped to `JwbaLayout` so JWBA can run light while OPTIMUS shell stays dark.
+- Outliner blocks: 14px / line-height 1.7, JetBrains Mono for inline code spans, Inter for prose.
+- Agent chip palette declared in `src/jwba/lib/agentColors.ts` (HSL tokens, not raw hex in JSX).
+
+## 10. Telegram bridge
+
+- Top-bar status: green if `telegram_connections.is_active` for current user, amber otherwise.
+- Right sidebar "Open in Telegram" → `https://t.me/jwba_team_bot` (configurable via env / agents.spec).
+- Existing `telegram-webhook` extended to: if `jwba_agent_state.telegram_chat_id` matches, route incoming messages to `jwba_agent_outputs` for the `active_agent`.
+
+## 11. Packages
+
+`bun add react-force-graph-2d @dnd-kit/core @dnd-kit/sortable date-fns`
+
+## 12. Out of scope (this pass)
+
+- Full-text search across blocks (use ILIKE in ⌘K for now)
+- Block embeds rendering nested live block trees (show preview text only)
+- Multi-tenant beyond per-user (`tenant_id = auth.uid()`)
+- File uploads from "/" slash menu (placeholder UI only)
+- Mobile-optimized outliner gestures
+
+## 13. Build order
+
+1. Migration + seed agents in `handle_new_user`
+2. `JwbaLayout` shell + routing + nav entry
+3. Daily redirect + `PageView` skeleton
+4. `Outliner` + `Block` with keyboard + persistence
+5. Slash menu, `[[`, `((` autocompletes + ref sync
+6. Realtime + linked references
+7. Agent chips + `jwba-route-to-agent` edge function + output trigger
+8. ⌘K palette + Telegram status
+9. `/workspace/graph`
+
+## Technical notes
+
+- contentEditable kept dumb (plain text + marker parsing) to avoid an editor lib. Markdown bold/italic deferred.
+- `sort_order` as `double precision`; new block between A(1.0) and B(2.0) gets 1.5. Renormalize when delta < 1e-6.
+- All ref parsing happens client-side on save; server has no parser. Acceptable because RLS already scopes writes.
+- Existing OPTIMUS data is untouched; tables prefixed `jwba_` to coexist.
