@@ -651,6 +651,267 @@ export type Database = {
         }
         Relationships: []
       }
+      jwba_agent_outputs: {
+        Row: {
+          agent_codename: string
+          created_at: string
+          id: string
+          payload: Json
+          project_id: string | null
+          source_block_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          agent_codename: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string | null
+          source_block_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          agent_codename?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string | null
+          source_block_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jwba_agent_outputs_agent_codename_fkey"
+            columns: ["agent_codename"]
+            isOneToOne: false
+            referencedRelation: "jwba_agents"
+            referencedColumns: ["codename"]
+          },
+          {
+            foreignKeyName: "jwba_agent_outputs_source_block_id_fkey"
+            columns: ["source_block_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jwba_agent_state: {
+        Row: {
+          active_agent: string | null
+          context_page_id: string | null
+          id: string
+          project_id: string | null
+          telegram_chat_id: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_agent?: string | null
+          context_page_id?: string | null
+          id?: string
+          project_id?: string | null
+          telegram_chat_id?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_agent?: string | null
+          context_page_id?: string | null
+          id?: string
+          project_id?: string | null
+          telegram_chat_id?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jwba_agent_state_context_page_id_fkey"
+            columns: ["context_page_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jwba_agents: {
+        Row: {
+          codename: string
+          color: string
+          created_at: string
+          display_name: string
+          sort_order: number
+          spec: Json
+          status: string
+          telegram_command: string | null
+          updated_at: string
+        }
+        Insert: {
+          codename: string
+          color?: string
+          created_at?: string
+          display_name: string
+          sort_order?: number
+          spec?: Json
+          status?: string
+          telegram_command?: string | null
+          updated_at?: string
+        }
+        Update: {
+          codename?: string
+          color?: string
+          created_at?: string
+          display_name?: string
+          sort_order?: number
+          spec?: Json
+          status?: string
+          telegram_command?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      jwba_block_refs: {
+        Row: {
+          created_at: string
+          id: string
+          ref_type: string
+          source_block_id: string
+          target_block_id: string | null
+          target_page_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ref_type: string
+          source_block_id: string
+          target_block_id?: string | null
+          target_page_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ref_type?: string
+          source_block_id?: string
+          target_block_id?: string | null
+          target_page_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jwba_block_refs_source_block_id_fkey"
+            columns: ["source_block_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jwba_block_refs_target_block_id_fkey"
+            columns: ["target_block_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jwba_block_refs_target_page_id_fkey"
+            columns: ["target_page_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jwba_blocks: {
+        Row: {
+          agent_codename: string | null
+          agent_output_id: string | null
+          block_type: string
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          page_id: string
+          parent_id: string | null
+          sort_order: number
+          telegram_message_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_codename?: string | null
+          agent_output_id?: string | null
+          block_type?: string
+          content?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          page_id: string
+          parent_id?: string | null
+          sort_order?: number
+          telegram_message_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_codename?: string | null
+          agent_output_id?: string | null
+          block_type?: string
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          page_id?: string
+          parent_id?: string | null
+          sort_order?: number
+          telegram_message_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jwba_blocks_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jwba_blocks_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jwba_pages: {
+        Row: {
+          created_at: string
+          daily_date: string | null
+          id: string
+          is_daily: boolean
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_date?: string | null
+          id?: string
+          is_daily?: boolean
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_date?: string | null
+          id?: string
+          is_daily?: boolean
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       memory_items: {
         Row: {
           category: string | null
