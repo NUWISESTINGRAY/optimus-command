@@ -26,6 +26,7 @@ import DailyRedirect from "./jwba/pages/DailyRedirect";
 import DailyPage from "./jwba/pages/DailyPage";
 import PageRoute from "./jwba/pages/PageRoute";
 import GraphView from "./jwba/pages/GraphView";
+import MapPage from "./jwba/pages/MapPage";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/workspace/daily/:date" element={<DailyPage />} />
               <Route path="/workspace/page/:id" element={<PageRoute />} />
               <Route path="/workspace/graph" element={<GraphView />} />
+              <Route path="/workspace/map" element={<MapPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
