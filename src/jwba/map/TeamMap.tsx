@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { agentColor } from "../lib/agentColors";
+import { agentColor, agentHsl } from "../lib/agentColors";
 import { useRoomCtx } from "../rooms/RoomContext";
 import { User } from "lucide-react";
 
@@ -201,6 +201,7 @@ export default function TeamMap() {
             const p = layout[a.codename];
             if (!p) return null;
             const c = agentColor(a.codename);
+            const hsl = agentHsl(a.codename);
             const inRoom = roomMembers.includes(a.codename);
             const ring = statusRing(a.status, inRoom);
             const fill = c.dot.replace("bg-", "");
@@ -222,7 +223,7 @@ export default function TeamMap() {
                   </circle>
                 )}
                 <circle r={22} fill="hsl(220 30% 14%)" stroke={ring} strokeWidth={2.5} />
-                <circle r={14} className={c.dot} opacity={0.6} />
+                <circle r={14} fill={hsl} opacity={0.55} />
                 <text y={5} textAnchor="middle" className="fill-foreground text-[10px] font-mono font-bold pointer-events-none">
                   {a.codename.slice(0, 2).toUpperCase()}
                 </text>
