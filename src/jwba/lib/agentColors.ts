@@ -12,6 +12,25 @@ export const AGENT_COLORS: Record<string, { bg: string; text: string; dot: strin
   selene: { bg: "bg-fuchsia-500/15", text: "text-fuchsia-300", dot: "bg-fuchsia-400" },
 };
 
+export const AGENT_HSL: Record<string, string> = {
+  optimus: "hsl(199 89% 60%)",
+  atlas: "hsl(239 84% 67%)",
+  mercury: "hsl(160 84% 55%)",
+  apollo: "hsl(38 92% 60%)",
+  hermes: "hsl(258 89% 66%)",
+  iris: "hsl(346 90% 65%)",
+  vulcan: "hsl(20 90% 60%)",
+  nyx: "hsl(215 16% 55%)",
+  orion: "hsl(188 86% 60%)",
+  helios: "hsl(48 96% 60%)",
+  selene: "hsl(292 84% 65%)",
+};
+
+export function agentHsl(codename?: string | null) {
+  if (!codename) return AGENT_HSL.nyx;
+  return AGENT_HSL[codename] ?? AGENT_HSL.nyx;
+}
+
 export function agentColor(codename?: string | null) {
   if (!codename) return AGENT_COLORS.nyx;
   return AGENT_COLORS[codename] ?? AGENT_COLORS.nyx;
