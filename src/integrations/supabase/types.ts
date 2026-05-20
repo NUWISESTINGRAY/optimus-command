@@ -699,6 +699,36 @@ export type Database = {
           },
         ]
       }
+      jwba_agent_positions: {
+        Row: {
+          agent_codename: string
+          id: string
+          pinned: boolean
+          updated_at: string
+          user_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          agent_codename: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+          user_id: string
+          x?: number
+          y?: number
+        }
+        Update: {
+          agent_codename?: string
+          id?: string
+          pinned?: boolean
+          updated_at?: string
+          user_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
       jwba_agent_state: {
         Row: {
           active_agent: string | null
@@ -909,6 +939,109 @@ export type Database = {
           tenant_id?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      jwba_room_members: {
+        Row: {
+          agent_codename: string | null
+          id: string
+          joined_at: string
+          left_at: string | null
+          role: string
+          room_id: string
+        }
+        Insert: {
+          agent_codename?: string | null
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          room_id: string
+        }
+        Update: {
+          agent_codename?: string | null
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jwba_room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jwba_room_messages: {
+        Row: {
+          agent_codename: string | null
+          content: string
+          created_at: string
+          id: string
+          room_id: string
+          sender_kind: string
+        }
+        Insert: {
+          agent_codename?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          room_id: string
+          sender_kind: string
+        }
+        Update: {
+          agent_codename?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          sender_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jwba_room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "jwba_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jwba_rooms: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          saved_block_id: string | null
+          source_block_id: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          saved_block_id?: string | null
+          source_block_id?: string | null
+          status?: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          saved_block_id?: string | null
+          source_block_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
