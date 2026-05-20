@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, subDays } from "date-fns";
-import { Calendar, FileText, Bot, Search } from "lucide-react";
+import { Calendar, FileText, Bot, Search, Map, Network } from "lucide-react";
 import { agentColor } from "./lib/agentColors";
 
 export function LeftSidebar({ collapsed }: { collapsed: boolean }) {
@@ -40,6 +40,28 @@ export function LeftSidebar({ collapsed }: { collapsed: boolean }) {
 
   return (
     <aside className="w-60 border-r border-border bg-sidebar/60 flex flex-col overflow-y-auto">
+      <div className="p-3 border-b border-border space-y-0.5">
+        <NavLink
+          to="/workspace/map"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-2 py-1 rounded text-[13px] ${
+              isActive ? "bg-primary/15 text-primary" : "text-foreground/80 hover:bg-secondary/50"
+            }`
+          }
+        >
+          <Map className="w-3.5 h-3.5" /> Team Map
+        </NavLink>
+        <NavLink
+          to="/workspace/graph"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-2 py-1 rounded text-[13px] ${
+              isActive ? "bg-primary/15 text-primary" : "text-foreground/80 hover:bg-secondary/50"
+            }`
+          }
+        >
+          <Network className="w-3.5 h-3.5" /> Knowledge Graph
+        </NavLink>
+      </div>
       <div className="p-3">
         <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground mb-2">
           <Calendar className="w-3 h-3" /> Daily

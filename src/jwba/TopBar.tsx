@@ -1,9 +1,10 @@
 import { format } from "date-fns";
-import { Brain, Search, PanelLeft, PanelRight, Network } from "lucide-react";
+import { Brain, Search, PanelLeft, PanelRight, Network, Radio } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoomCtx } from "./rooms/RoomContext";
 
 interface Props {
   onToggleLeft: () => void;
@@ -13,6 +14,7 @@ interface Props {
 export function TopBar({ onToggleLeft, onToggleRight }: Props) {
   const { user } = useAuth();
   const nav = useNavigate();
+  const { openRoom } = useRoomCtx();
   const [tgActive, setTgActive] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,13 @@ export function TopBar({ onToggleLeft, onToggleRight }: Props) {
       </div>
 
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => openRoom()}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/15 border border-primary/30 text-primary hover:bg-primary/25 text-[11px] font-mono"
+          title="Drop into a meeting room"
+        >
+          <Radio className="w-3 h-3" /> Start room
+        </button>
         <button
           onClick={() => nav("/workspace/graph")}
           className="p-1.5 hover:bg-secondary rounded text-muted-foreground hover:text-foreground"
