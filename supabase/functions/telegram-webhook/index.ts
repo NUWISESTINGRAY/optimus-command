@@ -6,6 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const HISTORY_LIMIT = 12;
+
+function buildSystemPrompt(agent: any): string {
+  const spec = agent?.spec ?? {};
+  const role = spec.role ?? "Executive AI partner";
+  const tagline = spec.tagline ?? "";
+  const expertise = Array.isArray(spec.expertise) ? spec.expertise.join(", ") : "";
+  const resp = Array.isArray(spec.responsibilities) ? spec.responsibilities.join(", ") : "";
+  return `You are ${agent?.display_name ?? "Optimus"} (codename: ${agent?.codename ?? "optimus"}), ${role}. ${tagline}
+Expertise: ${expertise}.
+Responsibilities: ${resp}.
+You are replying inside Telegram. Use concise Telegram-style markdown. Stay in character for ${agent?.display_name ?? "Optimus"} — strategic, professional, and actionable. Always begin your reply with *${agent?.display_name ?? "Optimus"}* on its own line.`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -158,15 +172,93 @@ serve(async (req) => {
         case "/help":
           responseText = `🤖 *OPTIMUS Commands:*
 /start <code> — Link your OPTIMUS account
+/agents — List all AI agents you can talk to
+/agent <codename> — Switch active agent (e.g. /agent athena)
+@codename ... — One-off message to that agent (e.g. @cipher review my API)
+/reset — Clear conversation memory
+/save — Save this thread into today's daily page
+/endroom — Close current room without saving
 /brief — Daily intelligence brief
-/summarize — Summarize text
 /tasks — View active tasks
-/workflow — Workflow info
 /approvals — Pending approvals
 /help — This help message
 
-Or just send a message to chat with OPTIMUS AI.`;
+Just send a message to chat with the active agent.`;
           break;
+        case "/agents": {
+          const { data: agents } = await supabase.from("jwba_agents").select("codename, display_name, spec").order("sort_order");
+          responseText = "🧠 *Available agents:*\n" + (agents || []).map((a: any) => `• *${a.display_name}* (\`${a.codename}\`) — ${a.spec?.role ?? ""}`).join("\n") +
+            "\n\nSwitch with `/agent <codename>` or tag inline with `@codename ...`";
+          break;
+        }
+        case "/agent": {
+          if (!userId) { responseText = "⚠️ Link your account first with /start <code>."; break; }
+          const target = args.toLowerCase().replace(/^@/, "");
+          if (!target) { responseText = "Usage: `/agent <codename>` — see /agents for the list."; break; }
+          const { data: agent } = await supabase.from("jwba_agents").select("codename, display_name").eq("codename", target).maybeSingle();
+          if (!agent) { responseText = `❌ No agent \`${target}\`. Try /agents.`; break; }
+          await supabase.from("jwba_agent_state").upsert(
+            { user_id: userId, telegram_chat_id: chatId, active_agent: agent.codename, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" }
+          );
+          responseText = `✅ Active agent is now *${agent.display_name}*. Send a message to talk to them.`;
+          break;
+        }
+        case "/reset": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          await supabase.from("telegram_messages").insert({
+            user_id: userId, chat_id: chatId, direction: "system",
+            message_text: "[memory cleared]", raw_payload_json: { marker: "reset" },
+          });
+          responseText = "🧹 Memory cleared. New conversation starts now.";
+          break;
+        }
+        case "/save": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: room } = await supabase.from("jwba_rooms")
+            .select("id, title").eq("user_id", userId).eq("status", "open")
+            .like("title", `Telegram – ${today}%`).maybeSingle();
+          if (!room) { responseText = "ℹ️ No active Telegram thread to save today."; break; }
+          // Ensure today's daily page
+          let { data: page } = await supabase.from("jwba_pages").select("id")
+            .eq("tenant_id", userId).eq("daily_date", today).maybeSingle();
+          if (!page) {
+            const ins = await supabase.from("jwba_pages").insert({
+              tenant_id: userId, title: today, is_daily: true, daily_date: today,
+            }).select().single();
+            page = ins.data;
+          }
+          if (!page) { responseText = "⚠️ Could not open today's daily page."; break; }
+          // Inline save (service role — bypasses jwba-room-save's user auth requirement)
+          const { data: msgs } = await supabase.from("jwba_room_messages").select("*").eq("room_id", room.id).order("created_at");
+          const { data: existing } = await supabase.from("jwba_blocks").select("sort_order").eq("page_id", page.id).order("sort_order", { ascending: false }).limit(1);
+          const baseSort = (existing?.[0]?.sort_order ?? 0) + 1;
+          const { data: parent } = await supabase.from("jwba_blocks").insert({
+            page_id: page.id, sort_order: baseSort, content: `Meeting: ${room.title}`, block_type: "meeting", created_by: userId,
+          }).select().single();
+          if (parent && msgs?.length) {
+            await supabase.from("jwba_blocks").insert(msgs.map((m: any, i: number) => ({
+              page_id: page!.id, parent_id: parent.id, sort_order: i + 1,
+              content: m.content, block_type: m.sender_kind === "agent" ? "agent" : "text",
+              agent_codename: m.agent_codename, created_by: userId,
+            })));
+          }
+          await supabase.from("jwba_rooms").update({ status: "closed", saved_block_id: parent?.id, closed_at: new Date().toISOString() }).eq("id", room.id);
+          responseText = `💾 Saved ${msgs?.length ?? 0} messages to today's daily page.`;
+          break;
+        }
+        case "/endroom": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: room } = await supabase.from("jwba_rooms")
+            .select("id").eq("user_id", userId).eq("status", "open")
+            .like("title", `Telegram – ${today}%`).maybeSingle();
+          if (!room) { responseText = "ℹ️ No active Telegram thread."; break; }
+          await supabase.from("jwba_rooms").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", room.id);
+          responseText = "🛑 Room closed without saving.";
+          break;
+        }
         default:
           responseText = "Unknown command. Type /help for available commands.";
       }
@@ -187,25 +279,56 @@ Or just send a message to chat with OPTIMUS AI.`;
           }
         } catch (e) { console.error("telegram auto-dispatch:", e); }
       }
-      // Route to Optimus AI
+      // Multi-agent conversational routing
       if (userId) {
         try {
+          // 1. Resolve agent: @mention takes precedence, else active_agent state, else optimus
+          let targetCodename: string | null = null;
+          let cleanedText = text;
+          const mention = text.match(/^@([a-z]+)\b\s*/i);
+          if (mention) {
+            targetCodename = mention[1].toLowerCase();
+            cleanedText = text.slice(mention[0].length).trim() || text;
+          }
+          if (!targetCodename) {
+            const { data: state } = await supabase.from("jwba_agent_state")
+              .select("active_agent").eq("user_id", userId).maybeSingle();
+            targetCodename = state?.active_agent ?? "optimus";
+          }
+          const { data: agentRow } = await supabase.from("jwba_agents")
+            .select("codename, display_name, spec").eq("codename", targetCodename).maybeSingle();
+          const agent = agentRow ?? { codename: "optimus", display_name: "Optimus", spec: {} };
+
+          // 2. Load rolling memory — last N turns since most recent reset marker
+          const { data: history } = await supabase.from("telegram_messages")
+            .select("direction, message_text, raw_payload_json, created_at")
+            .eq("chat_id", chatId).order("created_at", { ascending: false }).limit(40);
+          const ordered = (history ?? []).slice().reverse();
+          const lastResetIdx = ordered.map((m: any) => m.raw_payload_json?.marker === "reset").lastIndexOf(true);
+          const recent = (lastResetIdx >= 0 ? ordered.slice(lastResetIdx + 1) : ordered)
+            .filter((m: any) => m.direction === "inbound" || m.direction === "outbound")
+            .slice(-HISTORY_LIMIT);
+
+          const chatMessages: any[] = [
+            { role: "system", content: buildSystemPrompt(agent) },
+            ...recent.map((m: any) => ({
+              role: m.direction === "inbound" ? "user" : "assistant",
+              content: m.message_text ?? "",
+            })),
+          ];
+          // Replace last user turn with cleanedText (strip @mention) if mention used
+          if (mention && chatMessages.length > 1 && chatMessages[chatMessages.length - 1].role === "user") {
+            chatMessages[chatMessages.length - 1].content = cleanedText;
+          }
+          // The just-inserted inbound message is already in history; ensure it's the last user turn
+          if (chatMessages[chatMessages.length - 1]?.role !== "user") {
+            chatMessages.push({ role: "user", content: cleanedText });
+          }
+
           const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-3-flash-preview",
-              messages: [
-                {
-                  role: "system",
-                  content: "You are OPTIMUS, an executive AI operating system, responding via Telegram. Keep responses concise and use Telegram markdown formatting. Be professional and actionable.",
-                },
-                { role: "user", content: text },
-              ],
-            }),
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: chatMessages }),
           });
 
           if (aiResponse.ok) {
@@ -214,7 +337,44 @@ Or just send a message to chat with OPTIMUS AI.`;
           } else {
             responseText = "⚠️ AI service temporarily unavailable. Please try again shortly.";
           }
-        } catch {
+
+          // 3. Bridge into today's JWBA room
+          try {
+            const today = new Date().toISOString().slice(0, 10);
+            const titlePrefix = `Telegram – ${today}`;
+            let { data: room } = await supabase.from("jwba_rooms")
+              .select("id").eq("user_id", userId).eq("status", "open")
+              .like("title", `${titlePrefix}%`).maybeSingle();
+            if (!room) {
+              const ins = await supabase.from("jwba_rooms").insert({
+                user_id: userId, title: titlePrefix, status: "open",
+              }).select("id").single();
+              room = ins.data;
+              if (room) {
+                await supabase.from("jwba_room_members").insert([
+                  { room_id: room.id, role: "host", agent_codename: null },
+                  { room_id: room.id, role: "agent", agent_codename: agent.codename },
+                ]);
+              }
+            } else {
+              // Ensure this agent is a member
+              const { data: existing } = await supabase.from("jwba_room_members")
+                .select("id").eq("room_id", room.id).eq("agent_codename", agent.codename).is("left_at", null).maybeSingle();
+              if (!existing) {
+                await supabase.from("jwba_room_members").insert({
+                  room_id: room.id, role: "agent", agent_codename: agent.codename,
+                });
+              }
+            }
+            if (room) {
+              await supabase.from("jwba_room_messages").insert([
+                { room_id: room.id, sender_kind: "user", agent_codename: null, content: cleanedText },
+                { room_id: room.id, sender_kind: "agent", agent_codename: agent.codename, content: responseText },
+              ]);
+            }
+          } catch (e) { console.error("room bridge:", e); }
+        } catch (e) {
+          console.error("ai route:", e);
           responseText = "⚠️ Connection error. Please try again.";
         }
       } else {

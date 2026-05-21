@@ -1,86 +1,65 @@
-# JW Brand AI Team — Roster Install
 
-Replace the placeholder agent roster (optimus, atlas, mercury, apollo…) with the 17 JW Brand agents Josh defined, wire their full system prompts, slash commands, and brand colors, and surface them everywhere the workspace already shows agents.
+# Conversational Telegram for JW Brand Agents
 
-## 1. Seed the 17 agents (migration)
+Bring the web Rooms experience to Telegram: persistent memory, any-agent addressing, and a bridge that saves Telegram threads into JWBA daily pages.
 
-New migration that:
+## 1. Rolling conversation memory
 
-- Deletes existing rows in `jwba_agents` (current placeholders are demo).
-- Inserts the 17 agents with `codename`, `display_name`, `sort_order`, `status='idle'`, and a rich `spec` JSONB:
-  - `role` — e.g. "COO / Chief of Staff"
-  - `tagline` — one-line description
-  - `slash` — e.g. `/ask-optimus`
-  - `expertise` — array
-  - `responsibilities` — array
-  - `collaborates_with` — array of codenames
-  - `success_metrics` — array
-  - `system` — the full persona + intro + gathering + delivery instructions, formatted as a single system prompt. This is what `jwba-room-turn` already reads from `spec.system`, so rooms immediately speak in-character.
-- Adds a confidentiality footer to every `system` prompt (the "CONFIDENTIALITY AND PROFESSIONALISM" block applied to all agents).
+Replace the stateless one-shot in `telegram-webhook` with a context-aware turn.
 
-Sort order groups: executives first (optimus, athena, cipher, nova, atlas, victoria, sentinel), then specialists (aaron, mark, cody, patty, vicky, jerry, dolly, maya, angelina, frannie).
+- On each non-command message, load the last N (default 12) rows from `telegram_messages` for that `chat_id` ordered by `created_at`.
+- Build an OpenAI-style `messages[]`: inbound → `user`, outbound → `assistant`. Prepend the active agent's system prompt.
+- Keep total context under ~4k tokens (truncate oldest turns first).
+- Add a `/reset` command that inserts a synthetic "memory cleared" marker so subsequent loads start fresh.
 
-## 2. Agent color palette
+## 2. Multi-agent addressing
 
-Extend `src/jwba/lib/agentColors.ts` with all 17 codenames in both `AGENT_COLORS` (Tailwind chip classes) and `AGENT_HSL` (map node halos). Assignments map role family to hue family:
+Let any JW Brand agent (Athena, Cipher, Nova, Optimus, etc.) respond from Telegram.
 
-```text
-Executives (cool, authoritative)
-  optimus  cyan     athena  emerald   cipher   indigo
-  nova     fuchsia  atlas   sky       victoria slate
-  sentinel rose
+- **Active agent state**: reuse `jwba_agent_state.active_agent` (already keyed by `user_id` and supports `telegram_chat_id`). Default to `optimus` when unset.
+- **Addressing rules** parsed in order:
+  1. `@codename ...` mention at start → route that turn to that agent (does not change active agent).
+  2. `/agent <codename>` → set active agent persistently, ack with the new persona.
+  3. `/agents` → list available codenames + short descriptions from `jwba_agents`.
+  4. Otherwise → route to current active agent.
+- Each agent's reply prefixes the persona name: e.g. `*Athena*\n…` so the chat reads like a multi-character thread.
+- System prompt is built from `jwba_agents.spec` (role, tone, expertise) so each persona feels distinct.
 
-Specialists (warm, creative)
-  aaron amber    mark   orange   cody  violet
-  patty pink     vicky  lime     jerry red
-  dolly  fuchsia maya   teal     angelina blue
-  frannie yellow
-```
+## 3. Bridge Telegram threads into JWBA Rooms
 
-Keep the existing `agentColor` / `agentHsl` fallback to `nyx`.
+Make Telegram a first-class Room surface so saved conversations land in today's daily page.
 
-## 3. Slash commands in the composer
+- On first inbound message of a calendar day (per `chat_id`), open a new `jwba_rooms` row (`title: "Telegram – <date>"`, `status: open`) and add the active agent as a member.
+- Mirror each inbound/outbound Telegram message into `jwba_room_messages` (`sender_kind: user|agent`, `agent_codename`).
+- When the user sends `/save`, invoke the existing `jwba-room-save` function targeting today's daily page → produces the same summarized block as the web Room "end & save" flow.
+- `/endroom` closes the current day's room without saving (rare).
+- Web Rooms overlay automatically picks the open Telegram room up because `RoomContext` already restores the most recent open room for the user.
 
-In `src/jwba/Block.tsx` (block editor) add a `/ask-<codename>` autocomplete: typing `/ask-` shows the 17 agents (filter by codename or display name), Enter inserts a block that requests that agent. Implementation: when the user picks one, insert a new child block with `block_type='agent-request'`, `agent_codename=<code>`, and content = the rest of the line. Then a tiny edge function (`jwba-agent-ask`) reads the request, calls Lovable AI with `spec.system`, and writes the reply via the existing `jwba_agent_outputs` → `jwba_agent_output_to_block` trigger so it lands as a child block. (No DB schema change — `jwba_agent_outputs` and the trigger already exist.)
+## 4. New commands summary
 
-## 4. Agent directory page
-
-New route `/workspace/agents` (`src/jwba/pages/AgentsPage.tsx`):
-
-- Two sections: Executive Leadership / Specialists.
-- Card per agent: color halo, codename, display name, role, tagline, slash command, status dot, "Start room" button (calls existing `RoomProvider.openRoom(codename)`), "View profile" opens a Sheet with full `spec` (expertise, responsibilities, collaborators as chips linking to other agents, success metrics).
-
-Add a sidebar entry "Agents" in `LeftSidebar.tsx` next to Team Map / Knowledge Graph, and update the existing collapsed agent list to use the new roster (already automatic once the table is reseeded).
-
-## 5. Team map labels
-
-`src/jwba/map/TeamMap.tsx` already renders whatever rows are in `jwba_agents`, so re-seeding does the work. Two small additions:
-
-- Cluster seed positions: executives ring at radius 140, specialists ring at radius 240, based on `sort_order`.
-- Tooltip shows `spec.role` and `spec.tagline` instead of just codename.
-
-## 6. Room overlay polish
-
-`RoomOverlay.tsx` agent picker should group by Executive / Specialist using the new roster and show slash command + role under each name. No behavioral change to room turn logic — `jwba-room-turn` already uses `spec.system`.
-
-## 7. Out of scope
-
-- Voice, image generation by agents, multi-tenant agents, scheduling.
-- Reworking the existing `optimus-chat` edge function (separate Optimus persona for the chat page can be migrated later).
-- Per-agent custom tools / RAG over the workspace (future pass).
-
-## 8. Build order
-
-1. Migration: wipe + seed 17 agents with full spec.
-2. Extend `agentColors.ts`.
-3. `AgentsPage.tsx` + sidebar entry + route in `App.tsx`.
-4. Slash autocomplete in `Block.tsx` + `jwba-agent-ask` edge function.
-5. Map seed positions + richer tooltip.
-6. Room picker grouping.
+| Command | Effect |
+|---|---|
+| `/agents` | List all agents with codenames |
+| `/agent <codename>` | Set active agent for this chat |
+| `@codename …` | One-off message to that agent |
+| `/reset` | Clear conversation memory |
+| `/save` | Save current thread into today's daily page |
+| `/endroom` | Close the bridged room without saving |
 
 ## Technical notes
 
-- `jwba_agents.spec` is JSONB and already read by `jwba-room-turn` (`spec.system`) — no schema migration needed beyond the seed.
-- The slash autocomplete reuses the existing `[[ ]]` / `(( ))` popover pattern in `Block.tsx`.
-- All system prompts will be stored verbatim from Josh's spec, with the universal conversational rule + confidentiality footer appended once per agent so future edits to those globals can be re-applied by re-running the seed.
-- Re-running the seed is idempotent: `INSERT ... ON CONFLICT (codename) DO UPDATE SET display_name = EXCLUDED.display_name, spec = EXCLUDED.spec, sort_order = EXCLUDED.sort_order`.
+**Edge function changes (`supabase/functions/telegram-webhook/index.ts`):**
+- Add `loadHistory(chat_id, limit)` helper that maps `telegram_messages` rows to chat-completion `messages[]`.
+- Add `resolveAgent(text, userId, chat_id)` returning `{agent, cleanedText, persistChange}` based on `@mention` / `/agent` / `jwba_agent_state`.
+- Add `getOrOpenTelegramRoom(userId, chat_id)` returning a `room_id`, opening one if today's room doesn't exist.
+- After AI call: insert into `jwba_room_messages` (user + assistant) in addition to existing `telegram_messages` log.
+- Build system prompt from `jwba_agents.spec` for the resolved agent; fall back to existing generic Optimus prompt if spec missing.
+
+**DB:** no schema changes required — all needed tables (`jwba_agents`, `jwba_agent_state`, `jwba_rooms`, `jwba_room_messages`, `jwba_room_members`, `telegram_messages`) already exist. `jwba_agent_state.telegram_chat_id` already accommodates the per-chat active agent.
+
+**No frontend changes** required; the web Room overlay will start showing the active Telegram thread automatically.
+
+## Out of scope
+- Group chat support (only 1:1 Telegram for now).
+- Image/voice ingestion (text only).
+- Cross-chat agent handoff inside a single Telegram message.
