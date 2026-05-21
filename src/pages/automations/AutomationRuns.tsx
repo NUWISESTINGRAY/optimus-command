@@ -14,10 +14,13 @@ import {
   Play,
   ArrowDownToLine,
   ArrowUpFromLine,
+  GitCompare,
+  Columns2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import NodeDiff from "./NodeDiff";
 
 function fmtDuration(ms: number | null): string {
   if (ms == null || isNaN(ms)) return "—";
@@ -51,6 +54,7 @@ export default function AutomationRuns() {
   const [nodeRuns, setNodeRuns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [workflow, setWorkflow] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<Record<string, "split" | "diff">>({});
 
   useEffect(() => { load(); }, [id]);
 
@@ -321,22 +325,43 @@ export default function AutomationRuns() {
                       </div>
                     )}
 
-                    <div className="grid md:grid-cols-2 gap-2">
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><ArrowDownToLine className="w-3 h-3" />Input</div>
-                          <button onClick={() => copyJson(nr.input_json)} className="p-1 rounded hover:bg-secondary text-muted-foreground"><Copy className="w-3 h-3" /></button>
-                        </div>
-                        <pre className="text-[10px] bg-background p-2 rounded overflow-auto max-h-60 font-mono leading-relaxed">{JSON.stringify(nr.input_json, null, 2)}</pre>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><ArrowUpFromLine className="w-3 h-3" />Output</div>
-                          <button onClick={() => copyJson(nr.output_json)} className="p-1 rounded hover:bg-secondary text-muted-foreground"><Copy className="w-3 h-3" /></button>
-                        </div>
-                        <pre className="text-[10px] bg-background p-2 rounded overflow-auto max-h-60 font-mono leading-relaxed">{JSON.stringify(nr.output_json, null, 2)}</pre>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      {(["split", "diff"] as const).map((m) => {
+                        const active = (viewMode[nr.id] ?? "diff") === m;
+                        const Icon = m === "split" ? Columns2 : GitCompare;
+                        return (
+                          <button
+                            key={m}
+                            onClick={() => setViewMode((v) => ({ ...v, [nr.id]: m }))}
+                            className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded inline-flex items-center gap-1 border transition-colors ${
+                              active ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground border-border hover:bg-secondary"
+                            }`}
+                          >
+                            <Icon className="w-3 h-3" />{m === "split" ? "Side-by-side" : "Diff"}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {(viewMode[nr.id] ?? "diff") === "diff" ? (
+                      <NodeDiff input={nr.input_json} output={nr.output_json} />
+                    ) : (
+                      <div className="grid md:grid-cols-2 gap-2">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><ArrowDownToLine className="w-3 h-3" />Input</div>
+                            <button onClick={() => copyJson(nr.input_json)} className="p-1 rounded hover:bg-secondary text-muted-foreground"><Copy className="w-3 h-3" /></button>
+                          </div>
+                          <pre className="text-[10px] bg-background p-2 rounded overflow-auto max-h-60 font-mono leading-relaxed">{JSON.stringify(nr.input_json, null, 2)}</pre>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-[10px] uppercase text-muted-foreground flex items-center gap-1"><ArrowUpFromLine className="w-3 h-3" />Output</div>
+                            <button onClick={() => copyJson(nr.output_json)} className="p-1 rounded hover:bg-secondary text-muted-foreground"><Copy className="w-3 h-3" /></button>
+                          </div>
+                          <pre className="text-[10px] bg-background p-2 rounded overflow-auto max-h-60 font-mono leading-relaxed">{JSON.stringify(nr.output_json, null, 2)}</pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </details>
               ))}
