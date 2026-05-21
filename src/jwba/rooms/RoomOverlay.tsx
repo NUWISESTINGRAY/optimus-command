@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoomCtx } from "./RoomContext";
 import { AgentChip } from "../AgentChip";
-import { X, Send, Plus, Megaphone, ArrowRight, Save, Loader2 } from "lucide-react";
+import { X, Send, Plus, Megaphone, ArrowRight, Save, Loader2, Users, Swords } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Msg {
@@ -30,7 +30,7 @@ export function RoomOverlay() {
   const [allAgents, setAllAgents] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<"round-robin" | "broadcast" | "handoff">("round-robin");
+  const [mode, setMode] = useState<"round-robin" | "broadcast" | "handoff" | "meeting" | "debate">("round-robin");
   const [handoffTo, setHandoffTo] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -106,6 +106,19 @@ export function RoomOverlay() {
     await supabase.from("jwba_room_members").update({ left_at: new Date().toISOString() }).eq("id", mid);
   };
 
+  const startMeeting = async () => {
+    if (!openRoomId) return;
+    const executive = ["optimus", "athena", "cipher", "nova", "atlas", "sentinel"];
+    const toAdd = executive.filter((c) => !agentMembers.find((m) => m.agent_codename === c));
+    if (toAdd.length) {
+      await supabase.from("jwba_room_members").insert(
+        toAdd.map((c) => ({ room_id: openRoomId, role: "agent", agent_codename: c }))
+      );
+    }
+    setMode("meeting");
+    toast({ title: "Meeting started", description: "Executive panel added. Drop your agenda below." });
+  };
+
   const endAndSave = async () => {
     // Find today's daily page or first page
     if (!user) return;
@@ -145,6 +158,9 @@ export function RoomOverlay() {
           ))}
           <button onClick={() => setShowPicker((v) => !v)} className="p-1 hover:bg-secondary rounded text-muted-foreground" title="Add agent">
             <Plus className="w-3 h-3" />
+          </button>
+          <button onClick={startMeeting} className="p-1 hover:bg-secondary rounded text-muted-foreground flex items-center gap-1 text-[10px]" title="Start executive meeting">
+            <Users className="w-3 h-3" /> meeting
           </button>
         </div>
         <button onClick={closeOverlay} className="p-1 hover:bg-secondary rounded">
@@ -208,6 +224,18 @@ export function RoomOverlay() {
             className={`px-2 py-0.5 rounded flex items-center gap-1 ${mode === "broadcast" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary"}`}
           >
             <Megaphone className="w-2.5 h-2.5" /> ask all
+          </button>
+          <button
+            onClick={() => setMode("meeting")}
+            className={`px-2 py-0.5 rounded flex items-center gap-1 ${mode === "meeting" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary"}`}
+          >
+            <Users className="w-2.5 h-2.5" /> meeting
+          </button>
+          <button
+            onClick={() => setMode("debate")}
+            className={`px-2 py-0.5 rounded flex items-center gap-1 ${mode === "debate" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary"}`}
+          >
+            <Swords className="w-2.5 h-2.5" /> debate
           </button>
           <select
             value={mode === "handoff" ? handoffTo ?? "" : ""}
