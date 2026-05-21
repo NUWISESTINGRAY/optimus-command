@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const HISTORY_LIMIT = 12;
+const DEFAULT_PANEL = ["optimus", "athena", "cipher", "nova", "atlas", "sentinel"];
 
 function buildSystemPrompt(agent: any): string {
   const spec = agent?.spec ?? {};
@@ -17,7 +18,46 @@ function buildSystemPrompt(agent: any): string {
   return `You are ${agent?.display_name ?? "Optimus"} (codename: ${agent?.codename ?? "optimus"}), ${role}. ${tagline}
 Expertise: ${expertise}.
 Responsibilities: ${resp}.
-You are replying inside Telegram. Use concise Telegram-style markdown. Stay in character for ${agent?.display_name ?? "Optimus"} — strategic, professional, and actionable. Always begin your reply with *${agent?.display_name ?? "Optimus"}* on its own line.`;
+You are replying inside Telegram. Use concise Telegram-style markdown. Stay in character for ${agent?.display_name ?? "Optimus"} — strategic, professional, and actionable. Always begin your reply with *${agent?.display_name ?? "Optimus"}* on its own line.
+
+ACTIONS: If — and only if — you can recommend a concrete action that should be executed in Josh's tools, append a JSON block at the very end of your reply on its own line, like:
+[ACTION:create_task]{"title":"...","priority":"medium"}
+Supported action_types: create_task, send_email, schedule_meeting, run_workflow, n8n. Skip if no action is needed.`;
+}
+
+// Parse [ACTION:type]{json} from agent text.
+function extractActions(text: string): { cleaned: string; actions: { action_type: string; payload: any }[] } {
+  const re = /\[ACTION:([a-z_]+)\]\s*(\{[\s\S]*?\})/gi;
+  const actions: { action_type: string; payload: any }[] = [];
+  const cleaned = text.replace(re, (_m, type, json) => {
+    try { actions.push({ action_type: String(type).toLowerCase(), payload: JSON.parse(json) }); } catch { /* ignore */ }
+    return "";
+  }).trim();
+  return { cleaned, actions };
+}
+
+async function tgSend(gatewayUrl: string, lovableKey: string, tgKey: string, body: any) {
+  return await fetch(`${gatewayUrl}/sendMessage`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${lovableKey}`,
+      "X-Connection-Api-Key": tgKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function tgAnswerCallback(gatewayUrl: string, lovableKey: string, tgKey: string, callback_query_id: string, text?: string) {
+  await fetch(`${gatewayUrl}/answerCallbackQuery`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${lovableKey}`,
+      "X-Connection-Api-Key": tgKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ callback_query_id, text: text ?? "OK" }),
+  });
 }
 
 serve(async (req) => {
@@ -37,6 +77,33 @@ serve(async (req) => {
 
     // Parse incoming Telegram update
     const update = await req.json();
+
+    // ===== Callback queries (inline button taps) =====
+    if (update.callback_query) {
+      const cq = update.callback_query;
+      const data = String(cq.data ?? "");
+      const cbChatId = cq.message?.chat?.id;
+      const [verb, approvalId] = data.split(":");
+      if (verb === "approve" && approvalId) {
+        const r = await fetch(`${supabaseUrl}/functions/v1/agent-action-execute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ approval_id: approvalId }),
+        });
+        const out = await r.json();
+        if (TELEGRAM_API_KEY) {
+          await tgAnswerCallback(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, cq.id, out.ok ? "Executed ✅" : `Failed: ${out.error ?? "error"}`);
+        }
+      } else if (verb === "reject" && approvalId) {
+        await supabase.from("approvals").update({ status: "rejected", decided_at: new Date().toISOString(), resolved_at: new Date().toISOString() }).eq("id", approvalId);
+        if (TELEGRAM_API_KEY) {
+          await tgAnswerCallback(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, cq.id, "Rejected");
+          await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, { chat_id: cbChatId, text: "❌ Action rejected." });
+        }
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const message = update.message;
 
     if (!message?.text) {
@@ -189,6 +256,168 @@ Just send a message to chat with the active agent.`;
           const { data: agents } = await supabase.from("jwba_agents").select("codename, display_name, spec").order("sort_order");
           responseText = "🧠 *Available agents:*\n" + (agents || []).map((a: any) => `• *${a.display_name}* (\`${a.codename}\`) — ${a.spec?.role ?? ""}`).join("\n") +
             "\n\nSwitch with `/agent <codename>` or tag inline with `@codename ...`";
+          break;
+        }
+        case "/roundtable":
+        case "/debate": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          // Syntax: /roundtable [codename,codename | ] <topic>   OR /roundtable <topic>
+          let panel = DEFAULT_PANEL;
+          let topic = args;
+          if (args.includes("|")) {
+            const [panelStr, ...rest] = args.split("|");
+            panel = panelStr.split(/[,\s]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+            topic = rest.join("|").trim();
+          } else if (args.toLowerCase().startsWith("panel ")) {
+            // /roundtable panel <name> <topic>
+            const parts = args.split(/\s+/);
+            const name = parts[1];
+            const { data: p } = await supabase.from("agent_panels").select("codenames").eq("user_id", userId).eq("name", name).maybeSingle();
+            if (p?.codenames?.length) panel = p.codenames;
+            topic = parts.slice(2).join(" ");
+          }
+          if (!topic) { responseText = `Usage: \`${command} <topic>\` or \`${command} athena,cipher,nova | <topic>\``; break; }
+
+          const { data: agents } = await supabase.from("jwba_agents").select("*").in("codename", panel);
+          const agentList = (agents || []).sort((a: any, b: any) => panel.indexOf(a.codename) - panel.indexOf(b.codename));
+
+          // Ensure today's Telegram room exists and add panel members
+          const today = new Date().toISOString().slice(0, 10);
+          let { data: room } = await supabase.from("jwba_rooms").select("id").eq("user_id", userId).eq("status", "open").like("title", `Telegram – ${today}%`).maybeSingle();
+          if (!room) {
+            const ins = await supabase.from("jwba_rooms").insert({ user_id: userId, title: `Telegram – ${today}`, status: "open" }).select("id").single();
+            room = ins.data;
+            if (room) await supabase.from("jwba_room_members").insert({ room_id: room.id, role: "host", agent_codename: null });
+          }
+          if (room) {
+            for (const a of agentList) {
+              const { data: existing } = await supabase.from("jwba_room_members").select("id").eq("room_id", room.id).eq("agent_codename", a.codename).is("left_at", null).maybeSingle();
+              if (!existing) await supabase.from("jwba_room_members").insert({ room_id: room.id, role: "agent", agent_codename: a.codename });
+            }
+            await supabase.from("jwba_room_messages").insert({ room_id: room.id, sender_kind: "user", content: topic });
+          }
+
+          // Acknowledge first
+          if (TELEGRAM_API_KEY) {
+            await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
+              chat_id: chatId,
+              text: `🎙️ *${command === "/debate" ? "Debate" : "Roundtable"}*: ${topic}\nPanel: ${agentList.map((a: any) => a.display_name).join(", ")}`,
+              parse_mode: "Markdown",
+            });
+          }
+
+          // Build shared transcript context
+          const baseHistory: any[] = [{ role: "user", content: topic }];
+          const debateExtra = command === "/debate"
+            ? " React directly to what other agents have said. Agree, push back, or refine — be specific."
+            : "";
+
+          // Round 1: each agent responds in turn
+          const turnTranscript: string[] = [`Josh: ${topic}`];
+          for (const a of agentList) {
+            try {
+              const sys = buildSystemPrompt(a) + debateExtra;
+              const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: "google/gemini-3-flash-preview",
+                  messages: [
+                    { role: "system", content: sys },
+                    { role: "user", content: command === "/debate" && turnTranscript.length > 1
+                      ? `Topic: ${topic}\n\nTranscript so far:\n${turnTranscript.join("\n\n")}\n\nYour turn.`
+                      : topic },
+                  ],
+                  max_tokens: 350,
+                }),
+              });
+              const aiData = await aiResp.json();
+              const raw = aiData.choices?.[0]?.message?.content || "(no response)";
+              const { cleaned, actions } = extractActions(raw);
+              turnTranscript.push(`${a.codename}: ${cleaned}`);
+
+              // Send to Telegram
+              if (TELEGRAM_API_KEY) {
+                await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
+                  chat_id: chatId,
+                  text: cleaned,
+                  parse_mode: "Markdown",
+                });
+              }
+              // Log outbound + mirror into room
+              await supabase.from("telegram_messages").insert({ user_id: userId, chat_id: chatId, direction: "outbound", message_text: cleaned });
+              if (room) await supabase.from("jwba_room_messages").insert({ room_id: room.id, sender_kind: "agent", agent_codename: a.codename, content: cleaned });
+
+              // Create approvals + inline buttons for each action
+              for (const act of actions) {
+                const { data: appr } = await supabase.from("approvals").insert({
+                  user_id: userId,
+                  title: `${a.codename} → ${act.action_type}: ${act.payload?.title ?? act.payload?.subject ?? "action"}`,
+                  summary: act.payload?.description ?? act.payload?.body ?? null,
+                  source_type: "agent_action",
+                  risk_level: act.action_type === "create_task" ? "low" : "medium",
+                  status: "pending",
+                  payload_json: { action_type: act.action_type, action_payload: act.payload, agent_codename: a.codename, room_id: room?.id, telegram_chat_id: chatId },
+                }).select("id").single();
+                if (appr && TELEGRAM_API_KEY) {
+                  await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
+                    chat_id: chatId,
+                    text: `🔔 *${a.display_name}* proposes \`${act.action_type}\`:\n\`\`\`\n${JSON.stringify(act.payload, null, 2)}\n\`\`\``,
+                    parse_mode: "Markdown",
+                    reply_markup: { inline_keyboard: [[
+                      { text: "✅ Approve", callback_data: `approve:${appr.id}` },
+                      { text: "❌ Reject", callback_data: `reject:${appr.id}` },
+                    ]] },
+                  });
+                }
+              }
+            } catch (e) {
+              console.error("roundtable agent error:", a.codename, e);
+            }
+          }
+
+          // Optimus synthesis
+          if (agentList.length > 1) {
+            try {
+              const synResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  model: "google/gemini-3-flash-preview",
+                  messages: [
+                    { role: "system", content: "You are Optimus, Chief of Staff. Synthesize the meeting transcript into: 1) Decision/consensus, 2) Open disagreements, 3) Recommended action items. Be brief and decisive." },
+                    { role: "user", content: turnTranscript.join("\n\n") },
+                  ],
+                  max_tokens: 400,
+                }),
+              });
+              const synData = await synResp.json();
+              const synth = `*🧭 Synthesis (Optimus)*\n${synData.choices?.[0]?.message?.content ?? ""}`;
+              if (TELEGRAM_API_KEY) {
+                await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, { chat_id: chatId, text: synth, parse_mode: "Markdown" });
+              }
+              await supabase.from("telegram_messages").insert({ user_id: userId, chat_id: chatId, direction: "outbound", message_text: synth });
+              if (room) await supabase.from("jwba_room_messages").insert({ room_id: room.id, sender_kind: "agent", agent_codename: "optimus", content: synth });
+            } catch (e) { console.error("synthesis:", e); }
+          }
+
+          responseText = ""; // already streamed
+          break;
+        }
+        case "/panel": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          if (!args) {
+            const { data: panels } = await supabase.from("agent_panels").select("name, codenames").eq("user_id", userId);
+            responseText = "📋 *Saved panels:*\n" +
+              ((panels || []).map((p: any) => `• \`${p.name}\` — ${p.codenames.join(", ")}`).join("\n") || "_none yet_") +
+              "\n\nSave one with `/panel <name> <codename,codename,...>`";
+          } else {
+            const [name, ...rest] = args.split(/\s+/);
+            const codenames = rest.join(" ").split(/[,\s]+/).map((s: string) => s.trim().toLowerCase()).filter(Boolean);
+            if (!codenames.length) { responseText = "Usage: `/panel <name> <codename,codename,...>`"; break; }
+            await supabase.from("agent_panels").upsert({ user_id: userId, name, codenames }, { onConflict: "user_id,name" });
+            responseText = `✅ Panel \`${name}\` saved: ${codenames.join(", ")}`;
+          }
           break;
         }
         case "/agent": {
