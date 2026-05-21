@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, subDays } from "date-fns";
-import { Calendar, FileText, Bot, Search, Map, Network } from "lucide-react";
+import { Calendar, FileText, Bot, Search, Map, Network, Users } from "lucide-react";
 import { agentColor } from "./lib/agentColors";
 
 export function LeftSidebar({ collapsed }: { collapsed: boolean }) {
@@ -60,6 +60,16 @@ export function LeftSidebar({ collapsed }: { collapsed: boolean }) {
           }
         >
           <Network className="w-3.5 h-3.5" /> Knowledge Graph
+        </NavLink>
+        <NavLink
+          to="/workspace/agents"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-2 py-1 rounded text-[13px] ${
+              isActive ? "bg-primary/15 text-primary" : "text-foreground/80 hover:bg-secondary/50"
+            }`
+          }
+        >
+          <Users className="w-3.5 h-3.5" /> Agents
         </NavLink>
       </div>
       <div className="p-3">
