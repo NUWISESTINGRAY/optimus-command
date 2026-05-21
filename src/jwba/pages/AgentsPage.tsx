@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentColor, agentHsl } from "../lib/agentColors";
+import { agentAvatar } from "../lib/agentAvatars";
 import { useRoomCtx } from "../rooms/RoomContext";
 import { MessageSquare } from "lucide-react";
 
@@ -26,15 +27,28 @@ export default function AgentsPage() {
   const renderCard = (a: Agent) => {
     const c = agentColor(a.codename);
     const hsl = agentHsl(a.codename);
+    const avatar = agentAvatar(a.codename);
     return (
       <div key={a.codename} className="rounded-lg border border-border bg-card/40 p-4 hover:border-primary/40 transition-colors">
         <div className="flex items-start gap-3">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center font-mono text-[11px] font-bold flex-shrink-0"
-            style={{ background: hsl + "33", border: `2px solid ${hsl}`, color: hsl }}
-          >
-            {a.codename.slice(0, 2).toUpperCase()}
-          </div>
+          {avatar ? (
+            <img
+              src={avatar}
+              alt={`${a.display_name} portrait`}
+              loading="lazy"
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+              style={{ border: `2px solid ${hsl}`, boxShadow: `0 0 12px ${hsl}55` }}
+            />
+          ) : (
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center font-mono text-[11px] font-bold flex-shrink-0"
+              style={{ background: hsl + "33", border: `2px solid ${hsl}`, color: hsl }}
+            >
+              {a.codename.slice(0, 2).toUpperCase()}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold">{a.display_name}</h3>
