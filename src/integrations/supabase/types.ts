@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_panels: {
+        Row: {
+          codenames: string[]
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          codenames?: string[]
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          codenames?: string[]
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_runs: {
         Row: {
           agent_mode: string | null

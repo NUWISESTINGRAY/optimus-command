@@ -45,7 +45,26 @@ export default function Approvals() {
   const handleAction = async (id: string, action: "approved" | "rejected") => {
     setActing(id);
     const approval = approvals.find((a) => a.id === id);
-    
+
+    // Agent-proposed actions: hand off to the executor edge function (which updates status itself)
+    if (action === "approved" && approval?.source_type === "agent_action") {
+      try {
+        const r = await supabase.functions.invoke("agent-action-execute", { body: { approval_id: id } });
+        if (r.error) throw r.error;
+        const out = r.data as any;
+        toast({
+          title: out?.ok ? "Action executed" : "Action failed",
+          description: out?.error ?? undefined,
+          variant: out?.ok ? undefined : "destructive",
+        });
+      } catch (e: any) {
+        toast({ title: "Execution error", description: e?.message ?? String(e), variant: "destructive" });
+      }
+      loadApprovals();
+      setActing(null);
+      return;
+    }
+
     const { error } = await supabase
       .from("approvals")
       .update({ status: action, decided_at: new Date().toISOString() })

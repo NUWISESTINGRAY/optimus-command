@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.automation-scheduler]
 verify_jwt = false
+
+[functions.agent-action-execute]
+verify_jwt = false
