@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { agentColor, agentHsl } from "../lib/agentColors";
+import { agentAvatar } from "../lib/agentAvatars";
 import { useRoomCtx } from "../rooms/RoomContext";
 import { User } from "lucide-react";
 
@@ -209,7 +210,8 @@ export default function TeamMap() {
             const hsl = agentHsl(a.codename);
             const inRoom = roomMembers.includes(a.codename);
             const ring = statusRing(a.status, inRoom);
-            const fill = c.dot.replace("bg-", "");
+            const avatar = agentAvatar(a.codename);
+            const clipId = `clip-${a.codename}`;
             return (
               <g
                 key={a.codename}
@@ -227,11 +229,31 @@ export default function TeamMap() {
                     <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite" />
                   </circle>
                 )}
-                <circle r={22} fill="hsl(220 30% 14%)" stroke={ring} strokeWidth={2.5} />
-                <circle r={14} fill={hsl} opacity={0.55} />
-                <text y={5} textAnchor="middle" className="fill-foreground text-[10px] font-mono font-bold pointer-events-none">
-                  {a.codename.slice(0, 2).toUpperCase()}
-                </text>
+                <defs>
+                  <clipPath id={clipId}>
+                    <circle r={22} />
+                  </clipPath>
+                </defs>
+                <circle r={24} fill="hsl(220 30% 14%)" stroke={ring} strokeWidth={2.5} />
+                {avatar ? (
+                  <image
+                    href={avatar}
+                    x={-22}
+                    y={-22}
+                    width={44}
+                    height={44}
+                    clipPath={`url(#${clipId})`}
+                    preserveAspectRatio="xMidYMid slice"
+                    className="pointer-events-none"
+                  />
+                ) : (
+                  <>
+                    <circle r={14} fill={hsl} opacity={0.55} />
+                    <text y={5} textAnchor="middle" className="fill-foreground text-[10px] font-mono font-bold pointer-events-none">
+                      {a.codename.slice(0, 2).toUpperCase()}
+                    </text>
+                  </>
+                )}
                 <text y={42} textAnchor="middle" className="fill-foreground text-[10px] font-mono pointer-events-none">
                   {a.display_name}
                 </text>
