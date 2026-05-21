@@ -570,6 +570,11 @@ Just send a message to chat with the active agent.`;
             responseText = "⚠️ AI service temporarily unavailable. Please try again shortly.";
           }
 
+          // Extract any [ACTION:...] blocks before sending the text reply
+          const parsed = extractActions(responseText);
+          responseText = parsed.cleaned;
+          const pendingActions = parsed.actions;
+
           // 3. Bridge into today's JWBA room
           try {
             const today = new Date().toISOString().slice(0, 10);
@@ -603,6 +608,32 @@ Just send a message to chat with the active agent.`;
                 { room_id: room.id, sender_kind: "user", agent_codename: null, content: cleanedText },
                 { room_id: room.id, sender_kind: "agent", agent_codename: agent.codename, content: responseText },
               ]);
+            }
+
+            // Create approvals + inline-button prompts for any proposed actions
+            if (TELEGRAM_API_KEY && pendingActions.length) {
+              for (const act of pendingActions) {
+                const { data: appr } = await supabase.from("approvals").insert({
+                  user_id: userId,
+                  title: `${agent.codename} → ${act.action_type}: ${act.payload?.title ?? act.payload?.subject ?? "action"}`,
+                  summary: act.payload?.description ?? act.payload?.body ?? null,
+                  source_type: "agent_action",
+                  risk_level: act.action_type === "create_task" ? "low" : "medium",
+                  status: "pending",
+                  payload_json: { action_type: act.action_type, action_payload: act.payload, agent_codename: agent.codename, room_id: room?.id, telegram_chat_id: chatId },
+                }).select("id").single();
+                if (appr) {
+                  await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
+                    chat_id: chatId,
+                    text: `🔔 *${agent.display_name}* proposes \`${act.action_type}\`:\n\`\`\`\n${JSON.stringify(act.payload, null, 2)}\n\`\`\``,
+                    parse_mode: "Markdown",
+                    reply_markup: { inline_keyboard: [[
+                      { text: "✅ Approve", callback_data: `approve:${appr.id}` },
+                      { text: "❌ Reject", callback_data: `reject:${appr.id}` },
+                    ]] },
+                  });
+                }
+              }
             }
           } catch (e) { console.error("room bridge:", e); }
         } catch (e) {
