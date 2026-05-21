@@ -1,107 +1,86 @@
-# Agent Team Map + Drop-in Meeting Rooms
+# JW Brand AI Team — Roster Install
 
-Add two live-collaboration features to JWBA Workspace: a real-time spatial map of all agents (and the user) plus lightweight "rooms" where the user can drop in, talk to one or more agents at once, and have the transcript stream back into a block.
+Replace the placeholder agent roster (optimus, atlas, mercury, apollo…) with the 17 JW Brand agents Josh defined, wire their full system prompts, slash commands, and brand colors, and surface them everywhere the workspace already shows agents.
 
-## 1. Agent Team Map (`/workspace/map`)
+## 1. Seed the 17 agents (migration)
 
-A canvas (top-right pane or full page) showing every agent as a circular avatar floating in 2D space, with the user node in the center.
+New migration that:
 
-- **Visuals**: agent color halo, codename label, status ring (idle = dim, working = pulsing amber, in-room = solid cyan, error = red).
-- **Activity hints**: small "thinking" dots when an agent is mid-output; recent activity (last block they wrote) shown on hover as a tooltip.
-- **Connections**: animated cyan line between any two nodes currently in the same room. Faint dashed line from an agent to the block/page they last touched.
-- **Realtime source**: subscribe to `jwba_agents` (status), `jwba_agent_outputs` (working pulses), and a new `jwba_rooms` / `jwba_room_members` table (presence).
-- **Layout**: deterministic force layout seeded from `jwba_agents.sort_order`; user can drag agents to pin a position (saved per user).
-- Entry points: new sidebar item "Team Map" and a mini-map widget in `RightSidebar`.
+- Deletes existing rows in `jwba_agents` (current placeholders are demo).
+- Inserts the 17 agents with `codename`, `display_name`, `sort_order`, `status='idle'`, and a rich `spec` JSONB:
+  - `role` — e.g. "COO / Chief of Staff"
+  - `tagline` — one-line description
+  - `slash` — e.g. `/ask-optimus`
+  - `expertise` — array
+  - `responsibilities` — array
+  - `collaborates_with` — array of codenames
+  - `success_metrics` — array
+  - `system` — the full persona + intro + gathering + delivery instructions, formatted as a single system prompt. This is what `jwba-room-turn` already reads from `spec.system`, so rooms immediately speak in-character.
+- Adds a confidentiality footer to every `system` prompt (the "CONFIDENTIALITY AND PROFESSIONALISM" block applied to all agents).
 
-## 2. Drop-in Meeting Rooms
+Sort order groups: executives first (optimus, athena, cipher, nova, atlas, victoria, sentinel), then specialists (aaron, mark, cody, patty, vicky, jerry, dolly, maya, angelina, frannie).
 
-Lightweight ephemeral rooms — no scheduling, no video. Think Discord huddle for agents.
+## 2. Agent color palette
 
-- **Start a room**: click an agent on the map (or "Start room" button in topbar) → opens an overlay panel with that agent already inside.
-- **Invite more agents**: `+` button shows agent picker; selected agents join instantly and their map nodes link to the room.
-- **Conversation**: chat-style transcript, user types prompts, each agent in the room responds in turn (round-robin) via Lovable AI (`google/gemini-3-flash-preview`). Each agent's system prompt comes from `jwba_agents.spec`.
-- **Persistence**: every message saved to `jwba_room_messages`. On "End & save", the entire transcript becomes a new block on the current page (or today's daily) with `block_type='meeting'` and child blocks per turn. Agents tagged via `agent_codename` so they appear in linked refs.
-- **Live presence**: who is "speaking" right now is broadcast through Supabase Realtime so the map and the room header animate in sync.
-- **Quick actions inside a room**:
-  - "Ask all" — broadcasts the prompt to every agent in parallel instead of round-robin.
-  - "Hand off to <agent>" — pins the next response to a specific agent.
-  - "Drop in another user" deferred (single-user only this pass).
+Extend `src/jwba/lib/agentColors.ts` with all 17 codenames in both `AGENT_COLORS` (Tailwind chip classes) and `AGENT_HSL` (map node halos). Assignments map role family to hue family:
 
-## 3. Data model (new migration)
+```text
+Executives (cool, authoritative)
+  optimus  cyan     athena  emerald   cipher   indigo
+  nova     fuchsia  atlas   sky       victoria slate
+  sentinel rose
 
-- `jwba_rooms` — id, user_id (owner), title, status ('open'|'closed'), source_block_id (nullable), saved_block_id (nullable), created_at, closed_at
-- `jwba_room_members` — room_id, agent_codename (nullable for the human), joined_at, left_at, role ('host'|'agent')
-- `jwba_room_messages` — id, room_id, sender_kind ('user'|'agent'), agent_codename, content, created_at
-- `jwba_agent_positions` — user_id, agent_codename, x, y, pinned (for the map)
-- Extend `jwba_agents.status` with new value `'in-room'` (text column, no enum change needed).
-- RLS: all four tables scoped to `auth.uid()` via `user_id`; `jwba_room_members`/`jwba_room_messages` policies join through `jwba_rooms.user_id`.
-- Add tables to `supabase_realtime` publication.
-
-## 4. Edge functions
-
-- `jwba-room-turn` — input `{ room_id, prompt, mode: 'round-robin' | 'broadcast' | 'handoff', target_agent? }`. Loads room + members + recent messages, calls Lovable AI per responding agent (system prompt from `jwba_agents.spec.system`), inserts assistant messages into `jwba_room_messages`, updates `jwba_agents.status` to `'in-room'` while running, returns once all replies are saved (or streams via SSE for round-robin).
-- `jwba-room-save` — input `{ room_id, target_page_id }`. Collapses transcript into a parent block + child blocks, sets `jwba_rooms.saved_block_id`, status='closed', frees agents.
-
-Both check `auth.uid() = jwba_rooms.user_id` server-side.
-
-## 5. Frontend additions
-
-```
-src/jwba/
-  map/
-    TeamMap.tsx          — canvas, force layout, drag-to-pin
-    AgentNode.tsx        — avatar + status ring + tooltip
-    MapMini.tsx          — sidebar widget (read-only)
-    useMapPresence.ts    — realtime subscription
-  rooms/
-    RoomOverlay.tsx      — slide-in panel
-    RoomHeader.tsx       — member chips, "Ask all" / "Handoff" / "End & save"
-    RoomTranscript.tsx   — message list with agent chips
-    RoomComposer.tsx     — textarea + send
-    AgentPicker.tsx      — search + add
-    useRoom.ts           — fetch + realtime
-  pages/
-    MapPage.tsx          — `/workspace/map`
+Specialists (warm, creative)
+  aaron amber    mark   orange   cody  violet
+  patty pink     vicky  lime     jerry red
+  dolly  fuchsia maya   teal     angelina blue
+  frannie yellow
 ```
 
-- New routes mounted in `src/App.tsx`: `/workspace/map`.
-- New sidebar entry in `LeftSidebar.tsx`: "Team Map".
-- `TopBar.tsx` gets a "Start room" button.
-- Map uses plain SVG + a small `d3-force` import (lightweight) rather than another canvas lib; no new heavy deps beyond `d3-force`.
+Keep the existing `agentColor` / `agentHsl` fallback to `nyx`.
 
-## 6. Realtime channels
+## 3. Slash commands in the composer
 
-- `jwba-map` (global per user): listens to `jwba_agents`, `jwba_agent_positions`, `jwba_rooms`, `jwba_room_members`.
-- `jwba-room-<id>`: listens to `jwba_room_messages` and `jwba_room_members` for the open room.
+In `src/jwba/Block.tsx` (block editor) add a `/ask-<codename>` autocomplete: typing `/ask-` shows the 17 agents (filter by codename or display name), Enter inserts a block that requests that agent. Implementation: when the user picks one, insert a new child block with `block_type='agent-request'`, `agent_codename=<code>`, and content = the rest of the line. Then a tiny edge function (`jwba-agent-ask`) reads the request, calls Lovable AI with `spec.system`, and writes the reply via the existing `jwba_agent_outputs` → `jwba_agent_output_to_block` trigger so it lands as a child block. (No DB schema change — `jwba_agent_outputs` and the trigger already exist.)
 
-## 7. UX rules
+## 4. Agent directory page
 
-- Single open room at a time (closing a new one auto-saves or discards).
-- Round-robin default; max 5 agents per room to keep responses snappy.
-- Each agent's reply capped at ~400 tokens to keep cost predictable.
-- All map nodes are keyboard-navigable (Tab cycles, Enter opens room with that agent).
+New route `/workspace/agents` (`src/jwba/pages/AgentsPage.tsx`):
+
+- Two sections: Executive Leadership / Specialists.
+- Card per agent: color halo, codename, display name, role, tagline, slash command, status dot, "Start room" button (calls existing `RoomProvider.openRoom(codename)`), "View profile" opens a Sheet with full `spec` (expertise, responsibilities, collaborators as chips linking to other agents, success metrics).
+
+Add a sidebar entry "Agents" in `LeftSidebar.tsx` next to Team Map / Knowledge Graph, and update the existing collapsed agent list to use the new roster (already automatic once the table is reseeded).
+
+## 5. Team map labels
+
+`src/jwba/map/TeamMap.tsx` already renders whatever rows are in `jwba_agents`, so re-seeding does the work. Two small additions:
+
+- Cluster seed positions: executives ring at radius 140, specialists ring at radius 240, based on `sort_order`.
+- Tooltip shows `spec.role` and `spec.tagline` instead of just codename.
+
+## 6. Room overlay polish
+
+`RoomOverlay.tsx` agent picker should group by Executive / Specialist using the new roster and show slash command + role under each name. No behavioral change to room turn logic — `jwba-room-turn` already uses `spec.system`.
+
+## 7. Out of scope
+
+- Voice, image generation by agents, multi-tenant agents, scheduling.
+- Reworking the existing `optimus-chat` edge function (separate Optimus persona for the chat page can be migrated later).
+- Per-agent custom tools / RAG over the workspace (future pass).
 
 ## 8. Build order
 
-1. Migration: rooms, members, messages, positions, realtime publication.
-2. `jwba-room-turn` + `jwba-room-save` edge functions (round-robin first).
-3. `TeamMap` page with static layout + realtime status colors.
-4. `RoomOverlay` with text-only round-robin chat.
-5. Agent picker, broadcast & handoff modes.
-6. Drag-to-pin positions + `MapMini` in right sidebar.
-7. "End & save" → block on current page.
-
-## 9. Out of scope (this pass)
-
-- Voice/audio rooms.
-- Multi-human collaboration (presence of other logged-in users).
-- Persistent rooms across sessions (only open/closed lifecycle).
-- Streaming token-by-token in rooms (replies arrive whole; can be added later with SSE).
-- Mobile layout for the map.
+1. Migration: wipe + seed 17 agents with full spec.
+2. Extend `agentColors.ts`.
+3. `AgentsPage.tsx` + sidebar entry + route in `App.tsx`.
+4. Slash autocomplete in `Block.tsx` + `jwba-agent-ask` edge function.
+5. Map seed positions + richer tooltip.
+6. Room picker grouping.
 
 ## Technical notes
 
-- `d3-force` is ~30KB; runs entirely client-side, no SSR concerns.
-- `jwba_agents.status` is shared global — for now we set it from `jwba-room-turn` while a turn runs and clear it on completion. Multi-user contention is acceptable since each tenant has their own logical agents (status is per-row, not per-user; revisit if multi-tenant becomes real).
-- Cost guardrail: `jwba-room-turn` rejects if more than 5 active members.
-- Existing `jwba_agent_output_to_block` trigger is untouched; rooms write their own messages and only insert blocks on explicit save.
+- `jwba_agents.spec` is JSONB and already read by `jwba-room-turn` (`spec.system`) — no schema migration needed beyond the seed.
+- The slash autocomplete reuses the existing `[[ ]]` / `(( ))` popover pattern in `Block.tsx`.
+- All system prompts will be stored verbatim from Josh's spec, with the universal conversational rule + confidentiality footer appended once per agent so future edits to those globals can be re-applied by re-running the seed.
+- Re-running the seed is idempotent: `INSERT ... ON CONFLICT (codename) DO UPDATE SET display_name = EXCLUDED.display_name, spec = EXCLUDED.spec, sort_order = EXCLUDED.sort_order`.

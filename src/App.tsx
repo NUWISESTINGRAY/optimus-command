@@ -27,6 +27,7 @@ import DailyPage from "./jwba/pages/DailyPage";
 import PageRoute from "./jwba/pages/PageRoute";
 import GraphView from "./jwba/pages/GraphView";
 import MapPage from "./jwba/pages/MapPage";
+import AgentsPage from "./jwba/pages/AgentsPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/workspace/page/:id" element={<PageRoute />} />
               <Route path="/workspace/graph" element={<GraphView />} />
               <Route path="/workspace/map" element={<MapPage />} />
+              <Route path="/workspace/agents" element={<AgentsPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

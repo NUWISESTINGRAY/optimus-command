@@ -79,17 +79,22 @@ export default function TeamMap() {
   const layout = useMemo(() => {
     const cx = W / 2;
     const cy = H / 2;
-    const r = 220;
     const out: Record<string, { x: number; y: number }> = {};
-    agents.forEach((a, i) => {
+    const execs = agents.filter((a) => a.sort_order <= 7);
+    const specs = agents.filter((a) => a.sort_order > 7);
+    const place = (list: Agent[], radius: number) => {
+      list.forEach((a, i) => {
       const p = positions[a.codename];
       if (p && p.pinned) {
         out[a.codename] = { x: p.x, y: p.y };
       } else {
-        const angle = (i / Math.max(agents.length, 1)) * Math.PI * 2 - Math.PI / 2;
-        out[a.codename] = { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
+          const angle = (i / Math.max(list.length, 1)) * Math.PI * 2 - Math.PI / 2;
+          out[a.codename] = { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
       }
     });
+    };
+    place(execs, 150);
+    place(specs, 260);
     return out;
   }, [agents, positions]);
 
