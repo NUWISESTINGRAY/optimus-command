@@ -16,6 +16,8 @@ import {
   ArrowUpFromLine,
   GitCompare,
   Columns2,
+  Settings as SettingsIcon,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -266,10 +268,15 @@ export default function AutomationRuns() {
                 <div className="space-y-1.5">
                   {trace.items.map((it) => (
                     <div key={it.id} className="grid grid-cols-[160px_1fr_70px] items-center gap-2 text-[11px]">
-                      <div className="font-mono truncate flex items-center gap-1.5">
+                      <Link
+                        to={`/automations/${id}?focus=${encodeURIComponent(it.node_key)}`}
+                        title="Open in workflow editor"
+                        className="font-mono truncate flex items-center gap-1.5 hover:text-primary transition-colors group"
+                      >
                         <StatusIcon status={it.status} />
-                        <span className="truncate">{it.node_key}</span>
-                      </div>
+                        <span className="truncate group-hover:underline">{it.node_key}</span>
+                        <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 shrink-0" />
+                      </Link>
                       <div className="relative h-4 bg-secondary/30 rounded">
                         <div
                           className={`absolute h-full rounded ${
@@ -296,6 +303,14 @@ export default function AutomationRuns() {
                   <summary className="px-3 py-2.5 cursor-pointer flex items-center gap-3 text-xs hover:bg-secondary/40 transition-colors list-none">
                     {badge(nr.status)}
                     <span className="font-mono font-medium">{nr.node_key}</span>
+                    <Link
+                      to={`/automations/${id}?focus=${encodeURIComponent(nr.node_key)}`}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Open this node's settings in the workflow editor"
+                      className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+                    >
+                      <SettingsIcon className="w-3 h-3" />Configure
+                    </Link>
                     <span className="text-muted-foreground hidden sm:inline">+{fmtDuration(nr.offsetMs)}</span>
                     <span className="ml-auto flex items-center gap-3 text-muted-foreground">
                       <span className="font-mono flex items-center gap-1"><Timer className="w-3 h-3" />{fmtDuration(nr.durationMs)}</span>
