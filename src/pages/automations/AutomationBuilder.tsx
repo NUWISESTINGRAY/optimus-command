@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import {
   ReactFlow, ReactFlowProvider, Background, Controls, MiniMap,
-  addEdge, useEdgesState, useNodesState, Handle, Position,
+  addEdge, useEdgesState, useNodesState, Handle, Position, useReactFlow,
   type Connection, type Edge, type Node, type NodeProps, MarkerType,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -56,6 +56,8 @@ function BuilderInner() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rf = useReactFlow();
   const [wf, setWf] = useState<any>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -66,6 +68,24 @@ function BuilderInner() {
   const flowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { if (id) load(); }, [id]);
+
+  // Focus a specific node via ?focus=<node_key> (e.g. linked from trace viewer)
+  useEffect(() => {
+    const focusKey = searchParams.get("focus");
+    if (!focusKey || nodes.length === 0) return;
+    const target = nodes.find((n) => n.id === focusKey);
+    if (!target) return;
+    setSelected(target);
+    setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === focusKey })));
+    const t = setTimeout(() => {
+      rf.setCenter(target.position.x + 90, target.position.y + 40, { zoom: 1.2, duration: 600 });
+    }, 50);
+    // Clear the param so re-clicking the same link later still scrolls.
+    const next = new URLSearchParams(searchParams);
+    next.delete("focus");
+    setSearchParams(next, { replace: true });
+    return () => clearTimeout(t);
+  }, [nodes, searchParams, rf, setNodes, setSearchParams]);
 
   async function load() {
     const [wfRes, nRes, eRes] = await Promise.all([
