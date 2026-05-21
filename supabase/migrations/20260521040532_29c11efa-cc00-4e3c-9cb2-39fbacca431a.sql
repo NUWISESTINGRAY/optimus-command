@@ -1,0 +1,2 @@
+ALTER TABLE public.telegram_messages DROP CONSTRAINT IF EXISTS telegram_messages_direction_check;
+ALTER TABLE public.telegram_messages ADD CONSTRAINT telegram_messages_direction_check CHECK (direction IN ('inbound','outbound','system'));
