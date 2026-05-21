@@ -243,6 +243,9 @@ serve(async (req) => {
 /agent <codename> — Switch active agent (e.g. /agent athena)
 @codename ... — One-off message to that agent (e.g. @cipher review my API)
 /reset — Clear conversation memory
+/roundtable <topic> — Ask the executive panel (one reply each + synthesis)
+/debate <topic> — Same as roundtable, but agents react to each other
+/panel <name> <codenames> — Save a reusable panel; /panel alone lists them
 /save — Save this thread into today's daily page
 /endroom — Close current room without saving
 /brief — Daily intelligence brief
