@@ -75,8 +75,9 @@ Deno.serve(async (req) => {
     const { data: approval, error: aerr } = await admin.from("approvals").select("*").eq("id", approval_id).single();
     if (aerr || !approval) throw new Error("approval not found");
     if (approval.status !== "pending") {
-      return new Response(JSON.stringify({ ok: false, error: `already ${approval.status}` }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Already resolved — return 200 so the client doesn't treat it as a transport error.
+      return new Response(JSON.stringify({ ok: true, already: approval.status, skipped: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const meta = approval.payload_json ?? {};
