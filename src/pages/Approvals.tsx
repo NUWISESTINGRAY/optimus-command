@@ -32,6 +32,22 @@ export default function Approvals() {
     if (user) loadApprovals();
   }, [user]);
 
+  // Realtime: refresh when approvals change (e.g. Telegram tap approves/rejects)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`approvals:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "approvals", filter: `user_id=eq.${user.id}` },
+        () => loadApprovals()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const loadApprovals = async () => {
     setLoading(true);
     const { data } = await supabase
