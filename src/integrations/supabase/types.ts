@@ -595,38 +595,88 @@ export type Database = {
         }
         Relationships: []
       }
+      document_chunks: {
+        Row: {
+          chunk_idx: number
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          chunk_idx?: number
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          chunk_idx?: number
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
+          auto: boolean | null
           content: string | null
           created_at: string
           doc_type: string | null
           id: string
           project_id: string | null
+          source: string | null
+          source_url: string | null
           status: string | null
+          summary: string | null
           tags: string[] | null
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto?: boolean | null
           content?: string | null
           created_at?: string
           doc_type?: string | null
           id?: string
           project_id?: string | null
+          source?: string | null
+          source_url?: string | null
           status?: string | null
+          summary?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto?: boolean | null
           content?: string | null
           created_at?: string
           doc_type?: string | null
           id?: string
           project_id?: string | null
+          source?: string | null
+          source_url?: string | null
           status?: string | null
+          summary?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
@@ -1069,6 +1119,39 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_topics: {
+        Row: {
+          active: boolean
+          created_at: string
+          frequency: string
+          id: string
+          label: string
+          last_run_at: string | null
+          query: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          frequency?: string
+          id?: string
+          label: string
+          last_run_at?: string | null
+          query: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          frequency?: string
+          id?: string
+          label?: string
+          last_run_at?: string | null
+          query?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       memory_items: {
         Row: {
           category: string | null
@@ -1503,6 +1586,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_document_chunks: {
+        Args: {
+          _user_id?: string
+          match_count?: number
+          query_embedding: string
+        }
+        Returns: {
+          chunk: string
+          document_id: string
+          similarity: number
+          source: string
+          source_url: string
+          title: string
+        }[]
       }
       user_owns_automation: { Args: { _workflow_id: string }; Returns: boolean }
     }

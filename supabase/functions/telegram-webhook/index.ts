@@ -83,7 +83,25 @@ serve(async (req) => {
       const cq = update.callback_query;
       const data = String(cq.data ?? "");
       const cbChatId = cq.message?.chat?.id;
-      const [verb, approvalId] = data.split(":");
+      const parts = data.split(":");
+      const verb = parts[0];
+      // Knowledge vault keep/archive: kdoc:keep:<id> | kdoc:archive:<id>
+      if (verb === "kdoc" && parts[1] && parts[2]) {
+        const decision = parts[1];
+        const docId = parts[2];
+        // Find owning user via telegram_connections (cbChatId)
+        const { data: conn } = await supabase.from("telegram_connections").select("user_id").eq("chat_id", cbChatId).maybeSingle();
+        await fetch(`${supabaseUrl}/functions/v1/knowledge-decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ document_id: docId, decision, user_id: conn?.user_id }),
+        });
+        if (TELEGRAM_API_KEY) {
+          await tgAnswerCallback(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, cq.id, decision === "keep" ? "Kept ✅" : "Archived 🗑");
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const approvalId = parts[1];
       if (verb === "approve" && approvalId) {
         const r = await fetch(`${supabaseUrl}/functions/v1/agent-action-execute`, {
           method: "POST",
@@ -489,6 +507,45 @@ Just send a message to chat with the active agent.`;
           if (!room) { responseText = "ℹ️ No active Telegram thread."; break; }
           await supabase.from("jwba_rooms").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", room.id);
           responseText = "🛑 Room closed without saving.";
+          break;
+        }
+        case "/watch": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          if (!args) { responseText = "Usage: `/watch <topic>` — e.g. `/watch AI agent infrastructure`"; break; }
+          await supabase.from("knowledge_topics").insert({ user_id: userId, label: args.slice(0, 80), query: args, active: true });
+          responseText = `📡 Watching *${args}* — daily research will land in your Knowledge Vault.`;
+          break;
+        }
+        case "/watchlist": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          const { data: topics } = await supabase.from("knowledge_topics").select("id, label, active, last_run_at").eq("user_id", userId).order("created_at", { ascending: false });
+          responseText = "📡 *Watchlist:*\n" + ((topics ?? []).map((t: any) => `• \`${t.id.slice(0, 8)}\` — ${t.label}${t.active ? "" : " _(paused)_"}`).join("\n") || "_empty — add with /watch <topic>_");
+          break;
+        }
+        case "/unwatch": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          if (!args) { responseText = "Usage: `/unwatch <id-prefix>` (from /watchlist)"; break; }
+          const { data: topics } = await supabase.from("knowledge_topics").select("id, label").eq("user_id", userId);
+          const match = (topics ?? []).find((t: any) => t.id.startsWith(args));
+          if (!match) { responseText = "❌ No matching topic."; break; }
+          await supabase.from("knowledge_topics").delete().eq("id", match.id);
+          responseText = `🛑 Removed *${match.label}* from watchlist.`;
+          break;
+        }
+        case "/vault": {
+          if (!userId) { responseText = "⚠️ Link your account first."; break; }
+          if (!args) { responseText = "Usage: `/vault <question>` — semantic search across your knowledge."; break; }
+          const r = await fetch(`${supabaseUrl}/functions/v1/knowledge-search`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+            body: JSON.stringify({ query: args, limit: 3, user_id: userId }),
+          });
+          const j = await r.json();
+          const matches = j.matches ?? [];
+          if (!matches.length) { responseText = "🔎 No matches yet. Try /watch <topic> to grow the vault."; break; }
+          responseText = "🔎 *Top results:*\n" + matches.map((m: any, i: number) =>
+            `*${i + 1}. ${m.title}*${m.source_url ? `\n${m.source_url}` : ""}\n_${(m.chunk || "").slice(0, 220)}…_`
+          ).join("\n\n");
           break;
         }
         default:
