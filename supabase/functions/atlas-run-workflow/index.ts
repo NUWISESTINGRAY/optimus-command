@@ -61,9 +61,11 @@ serve(async (req) => {
       .order("step_order", { ascending: true });
 
     if (!steps || steps.length === 0) {
-      return new Response(JSON.stringify({ error: "Workflow has no steps" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({
+        ok: false,
+        skipped: true,
+        reason: "Workflow has no steps — add at least one step in the builder before running.",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Create run record
