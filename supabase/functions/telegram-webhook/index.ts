@@ -83,7 +83,25 @@ serve(async (req) => {
       const cq = update.callback_query;
       const data = String(cq.data ?? "");
       const cbChatId = cq.message?.chat?.id;
-      const [verb, approvalId] = data.split(":");
+      const parts = data.split(":");
+      const verb = parts[0];
+      // Knowledge vault keep/archive: kdoc:keep:<id> | kdoc:archive:<id>
+      if (verb === "kdoc" && parts[1] && parts[2]) {
+        const decision = parts[1];
+        const docId = parts[2];
+        // Find owning user via telegram_connections (cbChatId)
+        const { data: conn } = await supabase.from("telegram_connections").select("user_id").eq("chat_id", cbChatId).maybeSingle();
+        await fetch(`${supabaseUrl}/functions/v1/knowledge-decision`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ document_id: docId, decision, user_id: conn?.user_id }),
+        });
+        if (TELEGRAM_API_KEY) {
+          await tgAnswerCallback(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, cq.id, decision === "keep" ? "Kept ✅" : "Archived 🗑");
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const approvalId = parts[1];
       if (verb === "approve" && approvalId) {
         const r = await fetch(`${supabaseUrl}/functions/v1/agent-action-execute`, {
           method: "POST",
