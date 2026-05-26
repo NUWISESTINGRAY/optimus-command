@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.agent-action-execute]
 verify_jwt = false
+
+[functions.task-auto-dispatch]
+verify_jwt = false
