@@ -78,7 +78,7 @@ async function runOne(admin: any, task: any) {
     summary: answer.slice(0, 280),
     content: answer,
     source: "agent",
-    doc_type: "task-output",
+    doc_type: "report",
     status: "active",
     auto: true,
     tags: ["task-output", `agent:${mode}`],
