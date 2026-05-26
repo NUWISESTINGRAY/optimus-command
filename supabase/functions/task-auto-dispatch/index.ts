@@ -70,6 +70,20 @@ async function runOne(admin: any, task: any) {
     status: "done", description: newDesc, assignee: mode,
   }).eq("id", task.id);
 
+  // Save output as a Document in the Knowledge Vault
+  await admin.from("documents").insert({
+    user_id: task.user_id,
+    project_id: task.project_id ?? null,
+    title: task.title,
+    summary: answer.slice(0, 280),
+    content: answer,
+    source: "agent",
+    doc_type: "task-output",
+    status: "active",
+    auto: true,
+    tags: ["task-output", `agent:${mode}`],
+  });
+
   await admin.from("agent_runs").insert({
     user_id: task.user_id, agent_type: mode, task_type: "auto_task", task_id: task.id,
     agent_mode: mode, status: "completed",
