@@ -79,7 +79,7 @@ async function runOne(admin: any, task: any) {
     content: answer,
     source: "agent",
     doc_type: "report",
-    status: "active",
+    status: "final",
     auto: true,
     tags: ["task-output", `agent:${mode}`],
   });
