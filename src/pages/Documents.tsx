@@ -107,7 +107,7 @@ export default function Documents() {
   };
 
   const decide = async (doc: Doc, decision: "keep" | "archive") => {
-    await supabase.from("documents").update({ status: decision === "keep" ? "active" : "archived" }).eq("id", doc.id);
+    await supabase.from("documents").update({ status: decision === "keep" ? "final" : "archived" }).eq("id", doc.id);
     load();
   };
 
