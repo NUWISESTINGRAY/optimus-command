@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Link2, Search, Upload, Plus, Radar, Check, Archive, Sparkles, Loader2, ExternalLink, Trash2 } from "lucide-react";
+import { FileText, Link2, Search, Upload, Plus, Radar, Check, Archive, Sparkles, Loader2, ExternalLink, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -8,6 +8,7 @@ type Doc = {
   id: string;
   title: string;
   summary: string | null;
+  content: string | null;
   source: string | null;
   source_url: string | null;
   status: string | null;
@@ -37,6 +38,7 @@ export default function Documents() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [filter, setFilter] = useState<"active" | "archived" | "auto">("active");
+  const [selectedDoc, setSelectedDoc] = useState<Doc | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const [topicInput, setTopicInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -123,11 +125,17 @@ export default function Documents() {
   };
 
   const visible = docs.filter((d) => {
-    if (filter === "active") return (d.status ?? "active") === "active";
+    if (filter === "active") return ["active", "final", null].includes(d.status);
     if (filter === "archived") return d.status === "archived";
     if (filter === "auto") return d.auto === true;
     return true;
   });
+
+  const counts = {
+    active: docs.filter((d) => ["active", "final", null].includes(d.status)).length,
+    auto: docs.filter((d) => d.auto === true).length,
+    archived: docs.filter((d) => d.status === "archived").length,
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
@@ -233,6 +241,7 @@ export default function Documents() {
           <button key={f} onClick={() => setFilter(f)}
             className={`px-3 py-1 text-xs rounded-md border ${filter === f ? "bg-primary text-primary-foreground border-primary" : "bg-secondary/30 border-border text-muted-foreground hover:text-foreground"}`}>
             {f === "auto" ? "Auto-discovered" : f.charAt(0).toUpperCase() + f.slice(1)}
+            <span className="ml-2 text-[10px] opacity-70">{counts[f]}</span>
           </button>
         ))}
         <span className="text-xs text-muted-foreground ml-2">{visible.length} items</span>
@@ -244,7 +253,8 @@ export default function Documents() {
           <motion.div
             key={doc.id}
             initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.02, 0.3) }}
-            className="glass-panel p-4 flex flex-col gap-2"
+            className="glass-panel p-4 flex flex-col gap-2 cursor-pointer transition-colors hover:bg-secondary/20"
+            onClick={() => setSelectedDoc(doc)}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -257,7 +267,7 @@ export default function Documents() {
                 </span>
               )}
             </div>
-            {doc.summary && <p className="text-xs text-muted-foreground line-clamp-3">{doc.summary}</p>}
+            {(doc.summary || doc.content) && <p className="text-xs text-muted-foreground line-clamp-3">{doc.summary || doc.content}</p>}
             {doc.source_url && (
               <a href={doc.source_url} target="_blank" rel="noreferrer" className="text-[11px] text-cyan-400 inline-flex items-center gap-1 truncate">
                 <ExternalLink className="w-3 h-3 flex-shrink-0" /><span className="truncate">{doc.source_url}</span>
@@ -267,12 +277,12 @@ export default function Documents() {
               <span className="text-[10px] text-muted-foreground">{new Date(doc.created_at).toLocaleString()}</span>
               <div className="flex items-center gap-1">
                 {doc.status !== "active" && (
-                  <button onClick={() => decide(doc, "keep")} className="p-1 rounded text-emerald-400 hover:bg-emerald-500/10" title="Keep">
+                  <button onClick={(e) => { e.stopPropagation(); decide(doc, "keep"); }} className="p-1 rounded text-emerald-400 hover:bg-emerald-500/10" title="Keep">
                     <Check className="w-3.5 h-3.5" />
                   </button>
                 )}
                 {doc.status !== "archived" && (
-                  <button onClick={() => decide(doc, "archive")} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50" title="Archive">
+                  <button onClick={(e) => { e.stopPropagation(); decide(doc, "archive"); }} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/50" title="Archive">
                     <Archive className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -286,6 +296,49 @@ export default function Documents() {
           </div>
         )}
       </div>
+
+      {selectedDoc && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm p-4 md:p-8" onClick={() => setSelectedDoc(null)}>
+          <div className="max-w-4xl mx-auto h-full flex items-center" onClick={(e) => e.stopPropagation()}>
+            <div className="glass-panel w-full max-h-[85vh] overflow-hidden flex flex-col">
+              <div className="flex items-start justify-between gap-4 p-5 border-b border-border/60">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold text-foreground break-words">{selectedDoc.title}</h2>
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+                    <span>{new Date(selectedDoc.created_at).toLocaleString()}</span>
+                    {selectedDoc.source && <span className={`px-2 py-0.5 rounded border ${sourceStyle[selectedDoc.source] ?? sourceStyle.manual}`}>{selectedDoc.source}</span>}
+                    {selectedDoc.status && <span className="px-2 py-0.5 rounded border border-border bg-secondary/40 uppercase">{selectedDoc.status}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedDoc(null)}
+                  className="p-2 rounded-md border border-border bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  aria-label="Close document"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-5 space-y-4">
+                {selectedDoc.summary && (
+                  <p className="text-sm text-muted-foreground leading-6">{selectedDoc.summary}</p>
+                )}
+
+                {selectedDoc.source_url && (
+                  <a href={selectedDoc.source_url} target="_blank" rel="noreferrer" className="text-sm text-cyan-400 inline-flex items-center gap-2 break-all">
+                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                    <span>{selectedDoc.source_url}</span>
+                  </a>
+                )}
+
+                <div className="rounded-md border border-border bg-background/40 p-4">
+                  <pre className="whitespace-pre-wrap break-words text-sm text-foreground font-sans leading-6">{selectedDoc.content || "No document body was saved for this item."}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
