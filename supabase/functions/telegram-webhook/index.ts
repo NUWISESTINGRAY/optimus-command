@@ -240,6 +240,7 @@ serve(async (req) => {
     // Handle commands
     let responseText = "";
     const isCommand = text.startsWith("/");
+    let activeAgentCodename: string = "optimus";
 
     if (isCommand) {
       const command = text.split(" ")[0].toLowerCase();
