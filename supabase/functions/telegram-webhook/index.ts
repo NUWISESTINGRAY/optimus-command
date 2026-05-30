@@ -344,10 +344,8 @@ serve(async (req) => {
             responseText = "Usage: `/voice_test <codename>`\n\nExamples:\n/voice_test optimus\n/voice_test athena\n/voice_test cipher";
             break;
           }
-          const { data: vtAgents } = await supabase.from("jwba_agents").select("codename, display_name, spec").eq("codename", targetCodename).maybeSingle();
-          const vtAgent = vtAgents as any;
-          const displayName = vtAgent?.display_name ?? targetCodename;
-          const voiceId = vtAgent?.spec?.voice_id ?? AGENT_VOICES[targetCodename] ?? OPTIMUS_VOICE_ID;
+          const { data: vtAgents } = await supabase.from("jwba_agents").select("codename, display_name").eq("codename", targetCodename).maybeSingle();
+          const displayName = vtAgents?.display_name ?? targetCodename;
           const previewText = `This is ${displayName}. Voice profile active and ready for deployment.`;
           if (TELEGRAM_API_KEY) {
             await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
