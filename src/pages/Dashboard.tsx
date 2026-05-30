@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -18,9 +19,14 @@ import {
   Bot,
   MessageSquare,
   ShieldCheck,
+  Volume2,
+  Square,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+
+const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/optimus-tts`;
 
 const fadeIn = {
   initial: { opacity: 0, y: 8 },
@@ -35,6 +41,42 @@ export default function Dashboard() {
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
   const [recentAgentRuns, setRecentAgentRuns] = useState<any[]>([]);
   const [telegramConnected, setTelegramConnected] = useState(false);
+  const [greetingState, setGreetingState] = useState<"idle" | "loading" | "playing">("idle");
+  const greetingAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const greetingText = user
+    ? `Greetings Commander. Optimus reporting. You have ${stats.approvals} pending approval${stats.approvals === 1 ? "" : "s"} and ${stats.tasks} open task${stats.tasks === 1 ? "" : "s"}. ${stats.workflows} ATLAS workflow${stats.workflows === 1 ? " is" : "s are"} active. Standing by for your orders.`
+    : "Greetings Commander. Optimus standing by.";
+
+  const playGreeting = async () => {
+    if (greetingState === "playing" && greetingAudioRef.current) {
+      greetingAudioRef.current.pause();
+      greetingAudioRef.current = null;
+      setGreetingState("idle");
+      return;
+    }
+    setGreetingState("loading");
+    try {
+      const r = await fetch(TTS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ text: greetingText }),
+      });
+      if (!r.ok) throw new Error(`TTS ${r.status}`);
+      const { audioBase64 } = await r.json();
+      const audio = new Audio(`data:audio/mpeg;base64,${audioBase64}`);
+      greetingAudioRef.current = audio;
+      audio.onended = () => { setGreetingState("idle"); greetingAudioRef.current = null; };
+      await audio.play();
+      setGreetingState("playing");
+    } catch (e) {
+      console.error(e);
+      setGreetingState("idle");
+    }
+  };
 
   useEffect(() => {
     if (user) loadDashboardData();
@@ -100,6 +142,19 @@ export default function Dashboard() {
               {telegramConnected && " Telegram is connected and operational."}
               {!telegramConnected && " Connect Telegram in Settings for mobile access."}
             </p>
+            <button
+              onClick={playGreeting}
+              disabled={greetingState === "loading"}
+              className="mt-4 inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+            >
+              {greetingState === "loading" ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Synthesizing Optimus…</>
+              ) : greetingState === "playing" ? (
+                <><Square className="w-3.5 h-3.5" /> Stop briefing</>
+              ) : (
+                <><Volume2 className="w-3.5 h-3.5" /> Hear briefing in Optimus's voice</>
+              )}
+            </button>
           </div>
           <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
             <div className="status-dot-active" />
