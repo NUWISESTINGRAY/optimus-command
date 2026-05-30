@@ -6,9 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Optimus Prime cloned voice (ElevenLabs)
+// Optimus Prime cloned voice (ElevenLabs) — default fallback
 const OPTIMUS_VOICE_ID = "kAIWans22T8FUotYdyIM";
 const MODEL_ID = "eleven_turbo_v2_5";
+
+// Per-agent voice map (fallback if DB lookup misses).
+const AGENT_VOICES: Record<string, string> = {
+  optimus: "kAIWans22T8FUotYdyIM",
+  athena: "cgSgspJ2msm6clMCkdW9",
+  cipher: "nPczCjzI2devNBz1zQrb",
+  nova: "EXAVITQu4vr4xnSDxMaL",
+  atlas: "JBFqnCBsd6RMkjVDRZzb",
+  victoria: "Xb7hH8MSUJpSbSDYk0k2",
+  sentinel: "onwK4e9ZLuTAKqWW03F9",
+  aaron: "cjVigY5qzO86Huf0OWal",
+  mark: "bIHbv24MWmeRgasZH58o",
+  cody: "TX3LPaxmHKxFdv7VOQHJ",
+  patty: "XrExE9yKIg1WjnnlVkGX",
+  vicky: "FGY2WhTYpPnrIDTdsKH5",
+  jerry: "CwhRBWXzGAHq8TQ4Fs17",
+  dolly: "pFZP5JQG7iQjIQuC4Bku",
+  maya: "SAz9YHcvj6GT2YYXdXww",
+  angelina: "IKne3meq5aSn9XLyUdCD",
+  frannie: "pqHfZKP75CvOlQylNhV4",
+};
 
 // Strip markdown so TTS reads naturally.
 function cleanForSpeech(text: string): string {
@@ -30,7 +51,7 @@ serve(async (req) => {
     const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
     if (!apiKey) throw new Error("ELEVENLABS_API_KEY is not configured");
 
-    const { text, format } = await req.json();
+    const { text, format, codename, voice_id: explicitVoiceId } = await req.json();
     if (!text || typeof text !== "string") {
       return new Response(JSON.stringify({ error: "text required" }), {
         status: 400,
@@ -46,11 +67,18 @@ serve(async (req) => {
       });
     }
 
+    // Resolve voice: explicit > codename map > optimus default.
+    let voiceId = explicitVoiceId as string | undefined;
+    if (!voiceId && codename && typeof codename === "string") {
+      voiceId = AGENT_VOICES[codename.toLowerCase()];
+    }
+    if (!voiceId) voiceId = OPTIMUS_VOICE_ID;
+
     // format=ogg returns Telegram-friendly opus; default is mp3 for browser playback.
     const outputFormat = format === "ogg" ? "opus_48000_128" : "mp3_44100_128";
 
     const r = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${OPTIMUS_VOICE_ID}?output_format=${outputFormat}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${outputFormat}`,
       {
         method: "POST",
         headers: {
@@ -83,7 +111,7 @@ serve(async (req) => {
     const audioBase64 = base64Encode(buf);
     const mime = format === "ogg" ? "audio/ogg" : "audio/mpeg";
 
-    return new Response(JSON.stringify({ audioBase64, mime, voice_id: OPTIMUS_VOICE_ID }), {
+    return new Response(JSON.stringify({ audioBase64, mime, voice_id: voiceId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

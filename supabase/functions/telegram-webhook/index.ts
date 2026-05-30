@@ -61,7 +61,7 @@ async function tgAnswerCallback(gatewayUrl: string, lovableKey: string, tgKey: s
 }
 
 // Send an Optimus-voiced reply as a Telegram voice note via ElevenLabs TTS.
-async function tgSendOptimusVoice(
+async function tgSendAgentVoice(
   supabaseUrl: string,
   serviceKey: string,
   gatewayUrl: string,
@@ -69,15 +69,16 @@ async function tgSendOptimusVoice(
   tgKey: string,
   chatId: number | string,
   text: string,
+  codename: string,
 ) {
   try {
     const ttsResp = await fetch(`${supabaseUrl}/functions/v1/optimus-tts`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
-      body: JSON.stringify({ text, format: "ogg" }),
+      body: JSON.stringify({ text, format: "ogg", codename }),
     });
     if (!ttsResp.ok) {
-      console.error("optimus-tts failed for telegram:", ttsResp.status, await ttsResp.text());
+      console.error(`optimus-tts failed for telegram (${codename}):`, ttsResp.status, await ttsResp.text());
       return;
     }
     const { audioBase64 } = await ttsResp.json();
@@ -85,7 +86,7 @@ async function tgSendOptimusVoice(
     const bin = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
     const form = new FormData();
     form.append("chat_id", String(chatId));
-    form.append("voice", new Blob([bin], { type: "audio/ogg" }), "optimus.ogg");
+    form.append("voice", new Blob([bin], { type: "audio/ogg" }), `${codename}.ogg`);
     const r = await fetch(`${gatewayUrl}/sendVoice`, {
       method: "POST",
       headers: {
@@ -96,7 +97,7 @@ async function tgSendOptimusVoice(
     });
     if (!r.ok) console.error("tg sendVoice failed:", r.status, await r.text());
   } catch (e) {
-    console.error("tgSendOptimusVoice err:", e);
+    console.error("tgSendAgentVoice err:", e);
   }
 }
 
@@ -817,10 +818,9 @@ Just send a message to chat with the active agent.`;
         });
       }
 
-      // If this was an Optimus conversational reply, also send a voice note in his cloned voice.
-      // Only voice Optimus's replies (not other agents), and skip command outputs.
-      if (!isCommand && activeAgentCodename === "optimus") {
-        await tgSendOptimusVoice(
+      // For conversational replies (non-commands), also send a voice note in the active agent's voice.
+      if (!isCommand) {
+        await tgSendAgentVoice(
           supabaseUrl,
           supabaseServiceKey,
           GATEWAY_URL,
@@ -828,6 +828,7 @@ Just send a message to chat with the active agent.`;
           TELEGRAM_API_KEY,
           chatId,
           responseText,
+          activeAgentCodename,
         );
       }
     }
