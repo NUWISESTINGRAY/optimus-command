@@ -103,14 +103,56 @@ serve(async (req) => {
       }
       const approvalId = parts[1];
       if (verb === "approve" && approvalId) {
-        const r = await fetch(`${supabaseUrl}/functions/v1/agent-action-execute`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
-          body: JSON.stringify({ approval_id: approvalId }),
-        });
-        const out = await r.json();
+        // Look up the approval so we can route to the right executor based on source_type.
+        const { data: approval } = await supabase.from("approvals").select("*").eq("id", approvalId).maybeSingle();
+        let okText = "Approved ✅";
+        let failText: string | null = null;
+
+        if (!approval) {
+          failText = "not found";
+        } else if (approval.status !== "pending") {
+          okText = `Already ${approval.status}`;
+        } else if (approval.source_type === "agent_action") {
+          // Agent-proposed action: execute it.
+          const r = await fetch(`${supabaseUrl}/functions/v1/agent-action-execute`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+            body: JSON.stringify({ approval_id: approvalId }),
+          });
+          const out = await r.json();
+          if (!out.ok) failText = out.error ?? "execution failed";
+          else okText = "Executed ✅";
+        } else if (approval.source_type === "atlas_workflow" && approval.source_id) {
+          // Mark approved and resume the paused ATLAS workflow run.
+          await supabase.from("approvals").update({
+            status: "approved", decided_at: new Date().toISOString(), resolved_at: new Date().toISOString(),
+          }).eq("id", approvalId);
+          const { data: run } = await supabase.from("atlas_workflow_runs").select("*").eq("id", approval.source_id).eq("status", "paused").maybeSingle();
+          if (run) {
+            try {
+              await fetch(`${supabaseUrl}/functions/v1/atlas-run-workflow`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+                body: JSON.stringify({ workflow_id: run.workflow_id, input: run.input_json, source: "approval_resume_telegram" }),
+              });
+              okText = "Approved — workflow resumed ✅";
+            } catch (e) {
+              failText = `resume failed: ${e instanceof Error ? e.message : "err"}`;
+            }
+          }
+        } else {
+          // Generic approval: just mark approved.
+          await supabase.from("approvals").update({
+            status: "approved", decided_at: new Date().toISOString(), resolved_at: new Date().toISOString(),
+          }).eq("id", approvalId);
+        }
+
         if (TELEGRAM_API_KEY) {
-          await tgAnswerCallback(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, cq.id, out.ok ? "Executed ✅" : `Failed: ${out.error ?? "error"}`);
+          await tgAnswerCallback(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, cq.id, failText ? `Failed: ${failText}` : okText);
+          await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
+            chat_id: cbChatId,
+            text: failText ? `❌ Approval failed: ${failText}` : `✅ ${okText}`,
+          });
         }
       } else if (verb === "reject" && approvalId) {
         await supabase.from("approvals").update({ status: "rejected", decided_at: new Date().toISOString(), resolved_at: new Date().toISOString() }).eq("id", approvalId);
