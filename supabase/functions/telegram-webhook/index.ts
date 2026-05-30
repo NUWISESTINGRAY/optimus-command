@@ -338,12 +338,33 @@ serve(async (req) => {
             responseText = "⚠️ Your Telegram is not linked to an OPTIMUS account. Send /start to connect.";
           }
           break;
+        case "/voice_test": {
+          const targetCodename = args.split(/\s+/)[0]?.toLowerCase();
+          if (!targetCodename) {
+            responseText = "Usage: `/voice_test <codename>`\n\nExamples:\n/voice_test optimus\n/voice_test athena\n/voice_test cipher";
+            break;
+          }
+          const { data: vtAgents } = await supabase.from("jwba_agents").select("codename, display_name").eq("codename", targetCodename).maybeSingle();
+          const displayName = vtAgents?.display_name ?? targetCodename;
+          const previewText = `This is ${displayName}. Voice profile active and ready for deployment.`;
+          if (TELEGRAM_API_KEY) {
+            await tgSend(GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, {
+              chat_id: chatId,
+              text: `🔊 Voice preview for *${displayName}* (\`${targetCodename}\`) …`,
+              parse_mode: "Markdown",
+            });
+            await tgSendAgentVoice(supabaseUrl, supabaseServiceKey, GATEWAY_URL, LOVABLE_API_KEY, TELEGRAM_API_KEY, chatId, previewText, targetCodename);
+          }
+          responseText = "";
+          break;
+        }
         case "/help":
           responseText = `🤖 *OPTIMUS Commands:*
 /start <code> — Link your OPTIMUS account
 /agents — List all AI agents you can talk to
 /agent <codename> — Switch active agent (e.g. /agent athena)
 @codename ... — One-off message to that agent (e.g. @cipher review my API)
+/voice_test <codename> — Preview an agent's voice
 /reset — Clear conversation memory
 /roundtable <topic> — Ask the executive panel (one reply each + synthesis)
 /debate <topic> — Same as roundtable, but agents react to each other
