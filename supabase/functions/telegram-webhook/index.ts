@@ -60,6 +60,46 @@ async function tgAnswerCallback(gatewayUrl: string, lovableKey: string, tgKey: s
   });
 }
 
+// Send an Optimus-voiced reply as a Telegram voice note via ElevenLabs TTS.
+async function tgSendOptimusVoice(
+  supabaseUrl: string,
+  serviceKey: string,
+  gatewayUrl: string,
+  lovableKey: string,
+  tgKey: string,
+  chatId: number | string,
+  text: string,
+) {
+  try {
+    const ttsResp = await fetch(`${supabaseUrl}/functions/v1/optimus-tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ text, format: "ogg" }),
+    });
+    if (!ttsResp.ok) {
+      console.error("optimus-tts failed for telegram:", ttsResp.status, await ttsResp.text());
+      return;
+    }
+    const { audioBase64 } = await ttsResp.json();
+    if (!audioBase64) return;
+    const bin = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+    const form = new FormData();
+    form.append("chat_id", String(chatId));
+    form.append("voice", new Blob([bin], { type: "audio/ogg" }), "optimus.ogg");
+    const r = await fetch(`${gatewayUrl}/sendVoice`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": tgKey,
+      },
+      body: form,
+    });
+    if (!r.ok) console.error("tg sendVoice failed:", r.status, await r.text());
+  } catch (e) {
+    console.error("tgSendOptimusVoice err:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
