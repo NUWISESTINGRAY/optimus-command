@@ -670,6 +670,7 @@ Just send a message to chat with the active agent.`;
           const { data: agentRow } = await supabase.from("jwba_agents")
             .select("codename, display_name, spec").eq("codename", targetCodename).maybeSingle();
           const agent = agentRow ?? { codename: "optimus", display_name: "Optimus", spec: {} };
+          activeAgentCodename = agent.codename;
 
           // 2. Load rolling memory — last N turns since most recent reset marker
           const { data: history } = await supabase.from("telegram_messages")
