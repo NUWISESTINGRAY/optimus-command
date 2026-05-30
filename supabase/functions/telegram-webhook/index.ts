@@ -814,6 +814,20 @@ Just send a message to chat with the active agent.`;
           message_text: responseText,
         });
       }
+
+      // If this was an Optimus conversational reply, also send a voice note in his cloned voice.
+      // Skip for command outputs (which start with emoji/status markers) — only voice real replies.
+      if (!isCommand) {
+        await tgSendOptimusVoice(
+          supabaseUrl,
+          supabaseServiceKey,
+          GATEWAY_URL,
+          LOVABLE_API_KEY,
+          TELEGRAM_API_KEY,
+          chatId,
+          responseText,
+        );
+      }
     }
 
     return new Response(JSON.stringify({ ok: true }), {
