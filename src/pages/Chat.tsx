@@ -15,6 +15,8 @@ import {
   Loader2,
   Plus,
   MessageSquare,
+  Volume2,
+  Square,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +43,7 @@ interface ChatMessage {
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/optimus-chat`;
+const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/optimus-tts`;
 
 export default function Chat() {
   const { user } = useAuth();
@@ -52,6 +55,45 @@ export default function Chat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+  const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const playOptimusVoice = async (text: string, idx: number) => {
+    if (playingIdx === idx && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPlayingIdx(null);
+      return;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setLoadingIdx(idx);
+    try {
+      const r = await fetch(TTS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (!r.ok) throw new Error(`TTS failed: ${r.status}`);
+      const { audioBase64 } = await r.json();
+      const audio = new Audio(`data:audio/mpeg;base64,${audioBase64}`);
+      audioRef.current = audio;
+      setPlayingIdx(idx);
+      audio.onended = () => { setPlayingIdx(null); audioRef.current = null; };
+      await audio.play();
+    } catch (e: any) {
+      toast({ title: "Voice unavailable", description: e.message, variant: "destructive" });
+      setPlayingIdx(null);
+    } finally {
+      setLoadingIdx(null);
+    }
+  };
 
   useEffect(() => {
     if (user) loadSessions();
@@ -288,6 +330,21 @@ export default function Chat() {
                     <div className="whitespace-pre-line">{msg.content}</div>
                   )}
                 </div>
+                {msg.role === "assistant" && msg.content?.trim() && (
+                  <button
+                    onClick={() => playOptimusVoice(msg.content, i)}
+                    disabled={loadingIdx === i}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md border border-border/50 hover:border-primary/40"
+                  >
+                    {loadingIdx === i ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Synthesizing…</>
+                    ) : playingIdx === i ? (
+                      <><Square className="w-3 h-3" /> Stop</>
+                    ) : (
+                      <><Volume2 className="w-3 h-3" /> Play in Optimus's voice</>
+                    )}
+                  </button>
+                )}
               </div>
               {msg.role === "user" && (
                 <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
