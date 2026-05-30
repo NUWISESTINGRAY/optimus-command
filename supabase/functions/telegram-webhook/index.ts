@@ -818,8 +818,8 @@ Just send a message to chat with the active agent.`;
       }
 
       // If this was an Optimus conversational reply, also send a voice note in his cloned voice.
-      // Skip for command outputs (which start with emoji/status markers) — only voice real replies.
-      if (!isCommand) {
+      // Only voice Optimus's replies (not other agents), and skip command outputs.
+      if (!isCommand && activeAgentCodename === "optimus") {
         await tgSendOptimusVoice(
           supabaseUrl,
           supabaseServiceKey,
