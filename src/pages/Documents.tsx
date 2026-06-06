@@ -45,6 +45,9 @@ export default function Documents() {
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [researchQ, setResearchQ] = useState("");
+  const [researching, setResearching] = useState(false);
+  const [expanding, setExpanding] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -124,6 +127,38 @@ export default function Documents() {
     finally { setSearching(false); }
   };
 
+  const deepResearch = async () => {
+    if (!researchQ.trim()) return;
+    setResearching(true);
+    toast.info("GPT is researching the web…");
+    try {
+      const { data, error } = await supabase.functions.invoke("knowledge-ingest", {
+        body: { kind: "deep_research", query: researchQ.trim(), label: researchQ.trim().slice(0, 80) },
+      });
+      if (error) throw error;
+      toast.success("Briefing added to your brain");
+      setResearchQ("");
+      await load();
+    } catch (e: any) { toast.error(e.message ?? "Research failed"); }
+    finally { setResearching(false); }
+  };
+
+  const expandDoc = async (doc: Doc) => {
+    setExpanding(true);
+    toast.info("GPT is expanding this document with fresh research…");
+    try {
+      const { error } = await supabase.functions.invoke("knowledge-ingest", {
+        body: { kind: "expand", document_id: doc.id },
+      });
+      if (error) throw error;
+      toast.success("Document updated with new findings");
+      const { data: fresh } = await supabase.from("documents").select("*").eq("id", doc.id).single();
+      if (fresh) setSelectedDoc(fresh as Doc);
+      await load();
+    } catch (e: any) { toast.error(e.message ?? "Expansion failed"); }
+    finally { setExpanding(false); }
+  };
+
   const visible = docs.filter((d) => {
     if (filter === "active") return ["active", "final", null].includes(d.status);
     if (filter === "archived") return d.status === "archived";
@@ -165,6 +200,28 @@ export default function Documents() {
           <Upload className="w-4 h-4 text-amber-400" />
           <input ref={fileRef} type="file" onChange={(e) => e.target.files?.[0] && ingestFile(e.target.files[0])}
             className="flex-1 text-sm text-muted-foreground file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:text-primary-foreground" />
+        </div>
+      </div>
+
+      {/* Deep research */}
+      <div className="glass-panel p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-medium">Research a topic with GPT</span>
+          <span className="text-[10px] text-muted-foreground">— plans queries, scrapes the web, writes a cited briefing</span>
+        </div>
+        <div className="flex items-center gap-2 bg-secondary/30 rounded-md px-3 py-2 border border-border">
+          <Search className="w-4 h-4 text-purple-400" />
+          <input
+            value={researchQ}
+            onChange={(e) => setResearchQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && deepResearch()}
+            placeholder="What do you want me to research and add to the brain?"
+            className="flex-1 bg-transparent text-sm outline-none"
+          />
+          <button onClick={deepResearch} disabled={researching} className="px-3 py-1 text-xs rounded bg-purple-500/80 text-white hover:bg-purple-500 disabled:opacity-50 flex items-center gap-1">
+            {researching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Research
+          </button>
         </div>
       </div>
 
