@@ -84,6 +84,73 @@ async function firecrawlSearch(query: string, limit = 5) {
   return Array.isArray(items) ? items : [];
 }
 
+async function gptChat(system: string, user: string, model = "openai/gpt-5-mini", max_tokens = 1500): Promise<string> {
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      max_completion_tokens: max_tokens,
+    }),
+  });
+  const j = await res.json();
+  if (!res.ok) {
+    console.error("gpt error", res.status, j);
+    throw new Error(`AI gateway ${res.status}`);
+  }
+  return j.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
+async function planResearchQueries(topic: string): Promise<string[]> {
+  try {
+    const out = await gptChat(
+      "You are a research planner. Given a topic, output 3 distinct, specific, web-search queries (one per line) that together would build a comprehensive briefing. No numbering, no commentary — just 3 lines.",
+      `Topic: ${topic}\n\nReturn 3 search queries:`,
+      "openai/gpt-5-mini",
+      300,
+    );
+    const lines = out.split("\n").map((l) => l.replace(/^[\d.\-*\s]+/, "").trim()).filter(Boolean);
+    return lines.slice(0, 3).length ? lines.slice(0, 3) : [topic];
+  } catch { return [topic]; }
+}
+
+async function deepResearch(query: string, label: string): Promise<{ briefing: string; sources: { title: string; url: string }[] }> {
+  const queries = await planResearchQueries(query);
+  const allResults: any[] = [];
+  for (const q of queries) {
+    try {
+      const items = await firecrawlSearch(q, 3);
+      allResults.push(...items);
+    } catch (e) { console.error("search err", q, e); }
+  }
+  // Dedupe by url
+  const seen = new Set<string>();
+  const unique = allResults.filter((r) => {
+    const u = r.url || r.link;
+    if (!u || seen.has(u)) return false;
+    seen.add(u);
+    return true;
+  }).slice(0, 8);
+
+  const sources = unique.map((r) => ({ title: r.title ?? r.url ?? "Source", url: r.url ?? r.link ?? "" })).filter((s) => s.url);
+  const corpus = unique.map((r, i) =>
+    `[Source ${i + 1}] ${r.title ?? ""}\nURL: ${r.url ?? ""}\n${(r.markdown ?? r.description ?? r.snippet ?? "").slice(0, 4000)}`
+  ).join("\n\n---\n\n").slice(0, 24000);
+
+  if (!corpus) return { briefing: "", sources };
+
+  const briefing = await gptChat(
+    "You are an executive research analyst. Write a comprehensive, well-structured briefing in Markdown. Include: Overview, Key Findings (bulleted), Notable Details, Implications/Action Items. Cite sources inline as [1], [2] matching the provided source numbers. Be specific and information-dense — no fluff.",
+    `Research topic: ${label}\nUser query: ${query}\n\nSource material:\n\n${corpus}\n\nWrite the briefing now.`,
+    "openai/gpt-5-mini",
+    2500,
+  );
+
+  const sourceList = sources.map((s, i) => `[${i + 1}] ${s.title} — ${s.url}`).join("\n");
+  return { briefing: `${briefing}\n\n## Sources\n${sourceList}`, sources };
+}
+
 async function notify(supabase: any, userId: string, docId: string, title: string, source: string, summary: string) {
   await supabase.from("notifications").insert({
     user_id: userId,
@@ -245,25 +312,80 @@ serve(async (req) => {
       const topic_id: string = body.topic_id;
       const { data: topic } = await supabase.from("knowledge_topics").select("*").eq("id", topic_id).single();
       if (!topic) throw new Error("topic not found");
-      const results = await firecrawlSearch(topic.query, 4);
       const ids: string[] = [];
-      for (const r of results) {
-        const md = r.markdown || r.description || r.snippet || r.title || "";
-        if (!md) continue;
-        try {
+      try {
+        const { briefing, sources } = await deepResearch(topic.query, topic.label);
+        if (briefing) {
           const id = await ingestDocument(supabase, topic.user_id, {
-            title: `[${topic.label}] ${r.title || r.url || "Research result"}`,
-            content: `${r.title ?? ""}\n${r.url ?? ""}\n\n${md}`,
+            title: `${topic.label} — Briefing ${new Date().toLocaleDateString()}`,
+            content: briefing,
             source: "research",
-            source_url: r.url ?? null,
+            source_url: sources[0]?.url ?? null,
             auto: true,
-            tags: [topic.label, "auto", "research"],
+            tags: [topic.label, "auto", "research", "gpt-briefing"],
           });
           ids.push(id);
-        } catch (e) { console.error("research ingest", e); }
-      }
+        }
+      } catch (e) { console.error("deep research", e); }
       await supabase.from("knowledge_topics").update({ last_run_at: new Date().toISOString() }).eq("id", topic_id);
       return new Response(JSON.stringify({ ok: true, documents: ids }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (kind === "deep_research") {
+      const query = String(body.query || "").trim();
+      const label = String(body.label || query).trim();
+      if (!query) throw new Error("query required");
+      const { briefing, sources } = await deepResearch(query, label);
+      if (!briefing) throw new Error("no research results");
+      const id = await ingestDocument(supabase, userId, {
+        title: `${label} — Briefing ${new Date().toLocaleDateString()}`,
+        content: briefing,
+        source: "research",
+        source_url: sources[0]?.url ?? null,
+        auto: false,
+        tags: [label, "research", "gpt-briefing"],
+      });
+      return new Response(JSON.stringify({ ok: true, document_id: id, sources }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (kind === "expand") {
+      const document_id: string = body.document_id;
+      if (!document_id) throw new Error("document_id required");
+      const { data: doc } = await supabase.from("documents").select("*").eq("id", document_id).single();
+      if (!doc) throw new Error("document not found");
+
+      // Ask GPT to identify what we should research further
+      const focusQuery = await gptChat(
+        "Given a document, produce ONE highly-specific web-search query that would gather the most valuable new/updated information to deepen understanding of the topic. Output only the query string.",
+        `Title: ${doc.title}\n\nExisting content (truncated):\n${(doc.content ?? "").slice(0, 4000)}`,
+        "openai/gpt-5-mini",
+        120,
+      );
+      const q = focusQuery.replace(/^["'`]|["'`]$/g, "").trim() || doc.title;
+
+      const { briefing, sources } = await deepResearch(q, doc.title);
+      if (!briefing) throw new Error("no expansion content found");
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      const addition = `\n\n---\n\n# Knowledge Update — ${stamp}\n\n${briefing}`;
+      const newContent = `${doc.content ?? ""}${addition}`;
+      await supabase.from("documents").update({ content: newContent, status: "active", updated_at: new Date().toISOString() }).eq("id", document_id);
+
+      // Embed just the new section
+      const newChunks = chunkText(addition);
+      if (newChunks.length) {
+        const embeddings = await embedBatch(newChunks);
+        const { data: maxRow } = await supabase.from("document_chunks").select("chunk_idx").eq("document_id", document_id).order("chunk_idx", { ascending: false }).limit(1).maybeSingle();
+        const base = (maxRow?.chunk_idx ?? -1) + 1;
+        const rows = newChunks.map((content, idx) => ({
+          document_id, user_id: doc.user_id, chunk_idx: base + idx, content,
+          embedding: embeddings[idx]?.length ? embeddings[idx] : null,
+        }));
+        await supabase.from("document_chunks").insert(rows);
+      }
+
+      await notify(supabase, doc.user_id, document_id, `Updated: ${doc.title}`, "research", `Added new findings from ${sources.length} sources.`);
+      return new Response(JSON.stringify({ ok: true, document_id, sources }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "unknown kind" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
