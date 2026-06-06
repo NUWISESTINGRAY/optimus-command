@@ -1,8 +1,10 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!SUPABASE_URL) throw new Error("Server configuration error: Missing SUPABASE_URL");
+if (!SERVICE_KEY) throw new Error("Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY");
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
 
