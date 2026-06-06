@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Brain, Search, PanelLeft, PanelRight, Network, Radio } from "lucide-react";
+import { Brain, Search, PanelLeft, PanelRight, Network, Radio, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
