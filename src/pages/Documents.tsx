@@ -377,6 +377,18 @@ export default function Documents() {
               </div>
 
               <div className="overflow-y-auto p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => expandDoc(selectedDoc)}
+                    disabled={expanding}
+                    className="px-3 py-1.5 text-xs rounded bg-purple-500/80 text-white hover:bg-purple-500 disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {expanding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Research & expand with GPT
+                  </button>
+                  <span className="text-[11px] text-muted-foreground">Appends fresh findings from the live web</span>
+                </div>
+
                 {selectedDoc.summary && (
                   <p className="text-sm text-muted-foreground leading-6">{selectedDoc.summary}</p>
                 )}
