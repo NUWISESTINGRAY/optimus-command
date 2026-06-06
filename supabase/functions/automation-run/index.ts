@@ -44,7 +44,8 @@ serve(async (req) => {
     let userId: string | null = null;
     const authHeader = req.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
-      const u = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? serviceKey;
+      const u = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
       const { data } = await u.auth.getUser();
       userId = data.user?.id || null;
     }
