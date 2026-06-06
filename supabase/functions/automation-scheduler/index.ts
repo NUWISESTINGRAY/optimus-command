@@ -33,8 +33,16 @@ function cronMatches(expr: string, d: Date): boolean {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl) {
+    console.error("Edge function error: SUPABASE_URL is missing.");
+    return new Response(JSON.stringify({ error: "Server configuration error: Missing SUPABASE_URL" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if (!serviceKey) {
+    console.error("Edge function error: SUPABASE_SERVICE_ROLE_KEY is missing.");
+    return new Response(JSON.stringify({ error: "Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
   const supabase = createClient(supabaseUrl, serviceKey);
 
   const { data: wfs } = await supabase.from("automation_workflows")

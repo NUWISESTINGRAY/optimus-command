@@ -8,8 +8,10 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!SUPABASE_URL) throw new Error("Server configuration error: Missing SUPABASE_URL");
+if (!SERVICE_KEY) throw new Error("Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY");
 
 function chunkText(text: string, size = 1000, overlap = 150): string[] {
   const clean = (text || "").replace(/\s+/g, " ").trim();

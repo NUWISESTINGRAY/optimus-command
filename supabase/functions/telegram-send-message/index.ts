@@ -16,8 +16,16 @@ serve(async (req) => {
     const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
     if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured — connect Telegram in Settings");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl) {
+      console.error("Edge function error: SUPABASE_URL is missing.");
+      return new Response(JSON.stringify({ error: "Server configuration error: Missing SUPABASE_URL" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (!supabaseServiceKey) {
+      console.error("Edge function error: SUPABASE_SERVICE_ROLE_KEY is missing.");
+      return new Response(JSON.stringify({ error: "Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";

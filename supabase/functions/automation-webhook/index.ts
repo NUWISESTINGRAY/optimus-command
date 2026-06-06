@@ -15,8 +15,16 @@ serve(async (req) => {
   const token = parts[parts.length - 1];
   if (!token) return new Response(JSON.stringify({ error: "Missing token" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl) {
+    console.error("Edge function error: SUPABASE_URL is missing.");
+    return new Response(JSON.stringify({ error: "Server configuration error: Missing SUPABASE_URL" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if (!serviceKey) {
+    console.error("Edge function error: SUPABASE_SERVICE_ROLE_KEY is missing.");
+    return new Response(JSON.stringify({ error: "Server configuration error: Missing SUPABASE_SERVICE_ROLE_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
   const supabase = createClient(supabaseUrl, serviceKey);
 
   const { data: wf } = await supabase.from("automation_workflows").select("id, active, user_id").eq("webhook_token", token).maybeSingle();
