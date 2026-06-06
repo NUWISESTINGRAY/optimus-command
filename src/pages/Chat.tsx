@@ -58,6 +58,47 @@ export default function Chat() {
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const [loadingIdx, setLoadingIdx] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const toggleVoiceInput = () => {
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast({ title: "Voice input not supported", description: "Try Chrome, Edge, or Safari.", variant: "destructive" });
+      return;
+    }
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+    try {
+      const recognition = new SR();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+      recognition.onresult = (event: any) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setInput(transcript);
+      };
+      recognition.onerror = (e: any) => {
+        setIsListening(false);
+        toast({ title: "Voice error", description: e.error || "Could not access microphone", variant: "destructive" });
+      };
+      recognition.onend = () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      };
+      recognitionRef.current = recognition;
+      recognition.start();
+      setIsListening(true);
+    } catch (e: any) {
+      setIsListening(false);
+      toast({ title: "Voice error", description: e.message, variant: "destructive" });
+    }
+  };
 
   const playOptimusVoice = async (text: string, idx: number) => {
     if (playingIdx === idx && audioRef.current) {
@@ -400,7 +441,11 @@ export default function Chat() {
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
               disabled={isLoading}
             />
-            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={toggleVoiceInput}
+              className={`p-2 transition-colors ${isListening ? "text-primary animate-pulse" : "text-muted-foreground hover:text-foreground"}`}
+              title={isListening ? "Stop listening" : "Start voice input"}
+            >
               <Mic className="w-4 h-4" />
             </button>
             <button
