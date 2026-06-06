@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Brain, Search, PanelLeft, PanelRight, Network, Radio } from "lucide-react";
+import { Brain, Search, PanelLeft, PanelRight, Network, Radio, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +72,13 @@ export function TopBar({ onToggleLeft, onToggleRight }: Props) {
           <span className={`w-1.5 h-1.5 rounded-full ${tgActive ? "bg-emerald-400" : "bg-amber-400"}`} />
           Telegram
         </div>
+        <button
+          onClick={() => nav("/")}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary/50 border border-border text-muted-foreground hover:text-foreground hover:bg-secondary text-[11px] font-mono"
+          title="Exit to Command Center"
+        >
+          <LogOut className="w-3 h-3" /> Exit
+        </button>
         <button onClick={onToggleRight} className="p-1.5 hover:bg-secondary rounded text-muted-foreground hover:text-foreground">
           <PanelRight className="w-4 h-4" />
         </button>
