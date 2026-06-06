@@ -441,7 +441,11 @@ export default function Chat() {
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
               disabled={isLoading}
             />
-            <button className="p-2 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={toggleVoiceInput}
+              className={`p-2 transition-colors ${isListening ? "text-primary animate-pulse" : "text-muted-foreground hover:text-foreground"}`}
+              title={isListening ? "Stop listening" : "Start voice input"}
+            >
               <Mic className="w-4 h-4" />
             </button>
             <button
