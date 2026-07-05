@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Zap, ArrowRight, Mail, Lock, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,6 +12,10 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const rawNext = params.get("next");
+  // Only accept same-origin relative paths.
+  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +29,7 @@ export default function Auth() {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: window.location.origin + next,
           },
         });
         if (error) throw error;
@@ -33,7 +37,8 @@ export default function Auth() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/");
+        if (next === "/") navigate("/");
+        else window.location.href = next;
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
