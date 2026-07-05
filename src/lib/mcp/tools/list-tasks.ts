@@ -1,13 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
-import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
+import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-
-function db(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+import { supabaseForUser } from "../supabase-client";
 
 export default defineTool({
   name: "list_tasks",
@@ -22,7 +15,11 @@ export default defineTool({
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
-    let q = db(ctx).from("tasks").select("id,title,description,status,priority,due_date,assignee,created_at").order("created_at", { ascending: false }).limit(limit ?? 25);
+    let q = supabaseForUser(ctx)
+      .from("tasks")
+      .select("id,title,description,status,priority,due_date,assignee,created_at")
+      .order("created_at", { ascending: false })
+      .limit(limit ?? 25);
     if (status) q = q.eq("status", status);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
