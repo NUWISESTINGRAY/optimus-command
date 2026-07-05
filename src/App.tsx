@@ -21,6 +21,7 @@ import Logs from "./pages/Logs";
 import SettingsPage from "./pages/SettingsPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 import { JwbaLayout } from "./jwba/JwbaLayout";
 import DailyRedirect from "./jwba/pages/DailyRedirect";
 import DailyPage from "./jwba/pages/DailyPage";
@@ -40,6 +41,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/chat" element={<Chat />} />
