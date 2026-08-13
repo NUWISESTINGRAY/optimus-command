@@ -40,8 +40,14 @@ Executive Assistant, Chief of Staff.
 
 **Daily Executive Brief steps:** Start (trigger) → Generate Executive Brief (AI) →
 Save Brief as Document → Send Brief to Telegram → Notify in App.
-The other three are registered and active but currently have no steps defined —
-runs return `skipped: true` instead of erroring. Say the word and I'll author their steps.
+**Telegram Idea Pipeline steps:** Idea Received → Structure the Idea (Chief of Staff) →
+Save Idea Brief → Create Follow-Up Task → Confirm on Telegram → Notify in App.
+
+**Message Triage Pipeline steps:** Inbound Message → Triage & Draft Reply (Executive Assistant) →
+Save Draft Reply → **Approval Gate** → Send Reply Confirmation → Notify in App.
+
+**Research & Approval Flow steps:** Research Requested → Run Deep Research (Research) →
+Save Research Report → **Approval Gate** → Create Action Task → Notify in App.
 
 ### 4.2 Task auto-dispatch (always-on)
 DB trigger on new task → `task-auto-dispatch` → keyword classifier picks the role
