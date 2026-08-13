@@ -125,7 +125,7 @@ export default function AgentAdmin() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ ...emptyForm, sort_order: (agents.at(-1)?.sort_order ?? 0) + 1 });
+    setForm({ ...emptyForm, sort_order: (agents.length ? agents[agents.length - 1].sort_order : 0) + 1 });
     setOpen(true);
   };
 
