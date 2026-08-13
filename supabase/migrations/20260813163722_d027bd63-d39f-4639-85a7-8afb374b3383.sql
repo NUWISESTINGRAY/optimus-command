@@ -1,0 +1,11 @@
+ALTER TABLE public.jwba_agents ADD COLUMN IF NOT EXISTS default_mode text;
+UPDATE public.jwba_agents SET default_mode = 'COO' WHERE codename = 'optimus';
+UPDATE public.jwba_agents SET default_mode = 'CFO' WHERE codename = 'athena';
+UPDATE public.jwba_agents SET default_mode = 'CTO' WHERE codename = 'cipher';
+UPDATE public.jwba_agents SET default_mode = 'CMO' WHERE codename = 'nova';
+UPDATE public.jwba_agents SET default_mode = 'HR' WHERE codename = 'atlas';
+UPDATE public.jwba_agents SET default_mode = 'Executive Assistant' WHERE codename = 'victoria';
+UPDATE public.jwba_agents SET default_mode = 'Research' WHERE codename = 'sentinel';
+UPDATE public.jwba_agents SET default_mode = 'Chief of Staff' WHERE codename = 'aaron';
+UPDATE public.jwba_agents SET default_mode = 'CRO' WHERE codename = 'mark';
+CREATE INDEX IF NOT EXISTS jwba_agents_default_mode_idx ON public.jwba_agents (default_mode);
