@@ -933,6 +933,7 @@ export type Database = {
           codename: string
           color: string
           created_at: string
+          default_mode: string | null
           display_name: string
           sort_order: number
           spec: Json
@@ -944,6 +945,7 @@ export type Database = {
           codename: string
           color?: string
           created_at?: string
+          default_mode?: string | null
           display_name: string
           sort_order?: number
           spec?: Json
@@ -955,6 +957,7 @@ export type Database = {
           codename?: string
           color?: string
           created_at?: string
+          default_mode?: string | null
           display_name?: string
           sort_order?: number
           spec?: Json
