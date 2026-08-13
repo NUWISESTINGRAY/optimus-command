@@ -11,6 +11,7 @@ import {
   Settings,
   Zap,
   GitBranch,
+  Users,
   Brain as BrainIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -38,6 +39,7 @@ const navItems = [
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Approval Gate", url: "/approvals", icon: ShieldCheck },
   { title: "Execution Log", url: "/logs", icon: Activity },
+  { title: "Persona Admin", url: "/agents-admin", icon: Users },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

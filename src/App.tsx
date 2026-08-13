@@ -19,6 +19,7 @@ import Documents from "./pages/Documents";
 import Approvals from "./pages/Approvals";
 import Logs from "./pages/Logs";
 import SettingsPage from "./pages/SettingsPage";
+import AgentAdmin from "./pages/AgentAdmin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import OAuthConsent from "./pages/OAuthConsent";
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/documents" element={<Documents />} />
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/logs" element={<Logs />} />
+              <Route path="/agents-admin" element={<AgentAdmin />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
             <Route element={<ProtectedRoute><JwbaLayout /></ProtectedRoute>}>
