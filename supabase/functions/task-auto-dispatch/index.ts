@@ -37,9 +37,34 @@ function classify(text: string): string {
   return "COO";
 }
 
+// Resolve the lead persona for a given execution mode from jwba_agents.
+// Falls back to the generic one-line mode prompt if no persona is wired up.
+async function resolveAgent(admin: any, mode: string) {
+  const { data } = await admin
+    .from("jwba_agents")
+    .select("codename, display_name, spec")
+    .eq("default_mode", mode)
+    .order("sort_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+function personaPrompt(agent: any, mode: string): string {
+  const spec = agent?.spec ?? {};
+  const role = spec.role ?? mode;
+  const tagline = spec.tagline ?? "";
+  const expertise = Array.isArray(spec.expertise) ? spec.expertise.join(", ") : "";
+  const resp = Array.isArray(spec.responsibilities) ? spec.responsibilities.join(", ") : "";
+  return `You are ${agent?.display_name ?? mode} (${role}). ${tagline}\nExpertise: ${expertise}.\nResponsibilities: ${resp}.\nStay in character. Produce the deliverable directly.`;
+}
+
 async function runOne(admin: any, task: any) {
   const mode = classify(`${task.title}\n${task.description ?? ""}`);
-  const sys = MODE_PROMPTS[mode] ?? MODE_PROMPTS["Executive Assistant"];
+  const agent = await resolveAgent(admin, mode);
+  const sys = agent ? personaPrompt(agent, mode) : (MODE_PROMPTS[mode] ?? MODE_PROMPTS["Executive Assistant"]);
+  const displayName = agent?.display_name ?? mode;
+  const codename = agent?.codename ?? null;
   const user = `Task: ${task.title}\n\nDetails: ${task.description ?? "(none)"}\n\nDeliver the result directly — no preamble. Keep it under 400 words, structured with short headings or bullets.`;
 
   await admin.from("tasks").update({ status: "in_progress" }).eq("id", task.id);
@@ -57,8 +82,8 @@ async function runOne(admin: any, task: any) {
     const err = await r.text();
     await admin.from("tasks").update({ status: "todo" }).eq("id", task.id);
     await admin.from("agent_runs").insert({
-      user_id: task.user_id, agent_type: mode, task_type: "auto_task", task_id: task.id,
-      status: "failed", input_json: { task_id: task.id }, error_message: err,
+      user_id: task.user_id, agent_type: codename ?? mode, task_type: "auto_task", task_id: task.id,
+      agent_mode: mode, status: "failed", input_json: { task_id: task.id }, error_message: err,
       completed_at: new Date().toISOString(),
     });
     return { ok: false, error: err };
@@ -67,9 +92,9 @@ async function runOne(admin: any, task: any) {
   const data = await r.json();
   const answer = data.choices?.[0]?.message?.content ?? "";
 
-  const newDesc = `${task.description ? task.description + "\n\n" : ""}---\n🤖 ${mode} delivered:\n\n${answer}`;
+  const newDesc = `${task.description ? task.description + "\n\n" : ""}---\n🤖 ${displayName} delivered:\n\n${answer}`;
   await admin.from("tasks").update({
-    status: "done", description: newDesc, assignee: mode,
+    status: "done", description: newDesc, assignee: displayName,
   }).eq("id", task.id);
 
   // Save output as a Document in the Knowledge Vault
@@ -83,18 +108,18 @@ async function runOne(admin: any, task: any) {
     doc_type: "report",
     status: "final",
     auto: true,
-    tags: ["task-output", `agent:${mode}`],
+    tags: ["task-output", `mode:${mode}`, ...(codename ? [`agent:${codename}`] : [])],
   });
 
   await admin.from("agent_runs").insert({
-    user_id: task.user_id, agent_type: mode, task_type: "auto_task", task_id: task.id,
+    user_id: task.user_id, agent_type: codename ?? mode, task_type: "auto_task", task_id: task.id,
     agent_mode: mode, status: "completed",
     input_json: { title: task.title, description: task.description },
     output_json: { answer }, completed_at: new Date().toISOString(),
   });
 
   await admin.from("notifications").insert({
-    user_id: task.user_id, type: "task", title: `✅ ${mode} completed: ${task.title}`,
+    user_id: task.user_id, type: "task", title: `✅ ${displayName} completed: ${task.title}`,
     body: answer.slice(0, 240), link: `/tasks`,
   });
 
@@ -113,7 +138,7 @@ async function runOne(admin: any, task: any) {
           },
           body: JSON.stringify({
             chat_id: tg.chat_id,
-            text: `✅ *${mode}* completed: *${task.title}*\n\n${answer.slice(0, 800)}`,
+            text: `✅ *${displayName}* completed: *${task.title}*\n\n${answer.slice(0, 800)}`,
             parse_mode: "Markdown",
           }),
         });
@@ -121,7 +146,7 @@ async function runOne(admin: any, task: any) {
     }
   }
 
-  return { ok: true, mode, task_id: task.id };
+  return { ok: true, mode, agent: codename, task_id: task.id };
 }
 
 Deno.serve(async (req) => {
