@@ -14,6 +14,7 @@ import AutomationsList from "./pages/automations/AutomationsList";
 import AutomationBuilder from "./pages/automations/AutomationBuilder";
 import AutomationRuns from "./pages/automations/AutomationRuns";
 import Memory from "./pages/Memory";
+import FrameworkOS from "./pages/FrameworkOS";
 import EmailPage from "./pages/Email";
 import Documents from "./pages/Documents";
 import Approvals from "./pages/Approvals";
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/automations/:id" element={<AutomationBuilder />} />
               <Route path="/automations/:id/runs" element={<AutomationRuns />} />
               <Route path="/memory" element={<Memory />} />
+              <Route path="/frameworks" element={<FrameworkOS />} />
               <Route path="/email" element={<EmailPage />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/approvals" element={<Approvals />} />
