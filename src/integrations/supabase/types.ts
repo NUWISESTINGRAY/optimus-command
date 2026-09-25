@@ -779,6 +779,36 @@ export type Database = {
         }
         Relationships: []
       }
+      entities: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       framework_versions: {
         Row: {
           change_notes: string | null
@@ -824,40 +854,69 @@ export type Database = {
         Row: {
           archived: boolean
           category: string | null
+          code: string | null
           created_at: string
           description: string | null
+          entity_id: string | null
           id: string
           kind: string
+          layer: string | null
           name: string
+          owner_role: string | null
           slug: string
+          sort_order: number
+          source_ref: string | null
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           archived?: boolean
           category?: string | null
+          code?: string | null
           created_at?: string
           description?: string | null
+          entity_id?: string | null
           id?: string
           kind?: string
+          layer?: string | null
           name: string
+          owner_role?: string | null
           slug: string
+          sort_order?: number
+          source_ref?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
         Update: {
           archived?: boolean
           category?: string | null
+          code?: string | null
           created_at?: string
           description?: string | null
+          entity_id?: string | null
           id?: string
           kind?: string
+          layer?: string | null
           name?: string
+          owner_role?: string | null
           slug?: string
+          sort_order?: number
+          source_ref?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "frameworks_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       integrations: {
         Row: {
@@ -888,6 +947,51 @@ export type Database = {
           provider?: string | null
           service_name?: string
           status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      jw_role_mappings: {
+        Row: {
+          boundary: string | null
+          created_at: string
+          human_owner: string | null
+          id: string
+          inputs: string | null
+          mapped_codename: string | null
+          mission: string | null
+          output: string | null
+          role_kind: string
+          role_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          boundary?: string | null
+          created_at?: string
+          human_owner?: string | null
+          id?: string
+          inputs?: string | null
+          mapped_codename?: string | null
+          mission?: string | null
+          output?: string | null
+          role_kind?: string
+          role_name: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          boundary?: string | null
+          created_at?: string
+          human_owner?: string | null
+          id?: string
+          inputs?: string | null
+          mapped_codename?: string | null
+          mission?: string | null
+          output?: string | null
+          role_kind?: string
+          role_name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1488,6 +1592,7 @@ export type Database = {
         Row: {
           created_at: string
           dimension: string
+          entity_id: string | null
           id: string
           level: number
           notes: string | null
@@ -1497,6 +1602,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dimension: string
+          entity_id?: string | null
           id?: string
           level?: number
           notes?: string | null
@@ -1506,18 +1612,29 @@ export type Database = {
         Update: {
           created_at?: string
           dimension?: string
+          entity_id?: string | null
           id?: string
           level?: number
           notes?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prompts_maturity_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pulse_assessments: {
         Row: {
           assessed_at: string
           created_at: string
+          entity_id: string | null
+          evidence_links: string[]
           id: string
           notes: string | null
           scores: Json
@@ -1527,6 +1644,8 @@ export type Database = {
         Insert: {
           assessed_at?: string
           created_at?: string
+          entity_id?: string | null
+          evidence_links?: string[]
           id?: string
           notes?: string | null
           scores?: Json
@@ -1536,13 +1655,23 @@ export type Database = {
         Update: {
           assessed_at?: string
           created_at?: string
+          entity_id?: string | null
+          evidence_links?: string[]
           id?: string
           notes?: string | null
           scores?: Json
           subject?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pulse_assessments_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
@@ -1572,21 +1701,30 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          instruction: string | null
+          kickoff_date: string | null
           name: string
+          package_version: string | null
           source: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          instruction?: string | null
+          kickoff_date?: string | null
           name: string
+          package_version?: string | null
           source?: string | null
           user_id?: string
         }
         Update: {
           created_at?: string
           id?: string
+          instruction?: string | null
+          kickoff_date?: string | null
           name?: string
+          package_version?: string | null
           source?: string | null
           user_id?: string
         }
@@ -1594,39 +1732,90 @@ export type Database = {
       }
       task_import_items: {
         Row: {
+          acceptance_criteria: string | null
+          actual_due_date: string | null
+          approval_id: string | null
+          approval_role: string | null
+          assignee_agent: string | null
+          assignee_name: string | null
+          automation_mode: string | null
           batch_id: string
+          completed_at: string | null
           created_at: string
+          deliverable: string | null
+          dependencies: string[]
           description: string | null
+          due_offset_days: number | null
+          entity_id: string | null
+          evidence_links: string[]
+          external_id: string | null
           framework_ref: string | null
           id: string
+          owner_role: string | null
+          phase_days: string | null
           priority: string | null
           promoted_task_id: string | null
+          sort_order: number
           status: string
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          acceptance_criteria?: string | null
+          actual_due_date?: string | null
+          approval_id?: string | null
+          approval_role?: string | null
+          assignee_agent?: string | null
+          assignee_name?: string | null
+          automation_mode?: string | null
           batch_id: string
+          completed_at?: string | null
           created_at?: string
+          deliverable?: string | null
+          dependencies?: string[]
           description?: string | null
+          due_offset_days?: number | null
+          entity_id?: string | null
+          evidence_links?: string[]
+          external_id?: string | null
           framework_ref?: string | null
           id?: string
+          owner_role?: string | null
+          phase_days?: string | null
           priority?: string | null
           promoted_task_id?: string | null
+          sort_order?: number
           status?: string
           title: string
           updated_at?: string
           user_id?: string
         }
         Update: {
+          acceptance_criteria?: string | null
+          actual_due_date?: string | null
+          approval_id?: string | null
+          approval_role?: string | null
+          assignee_agent?: string | null
+          assignee_name?: string | null
+          automation_mode?: string | null
           batch_id?: string
+          completed_at?: string | null
           created_at?: string
+          deliverable?: string | null
+          dependencies?: string[]
           description?: string | null
+          due_offset_days?: number | null
+          entity_id?: string | null
+          evidence_links?: string[]
+          external_id?: string | null
           framework_ref?: string | null
           id?: string
+          owner_role?: string | null
+          phase_days?: string | null
           priority?: string | null
           promoted_task_id?: string | null
+          sort_order?: number
           status?: string
           title?: string
           updated_at?: string
@@ -1634,10 +1823,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "task_import_items_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "approvals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_import_items_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "task_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_import_items_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
             referencedColumns: ["id"]
           },
           {
