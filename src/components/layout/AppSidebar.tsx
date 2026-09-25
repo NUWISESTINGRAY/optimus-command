@@ -35,6 +35,7 @@ const navItems = [
   { title: "Automations", url: "/automations", icon: GitBranch },
   { title: "JWBA Workspace", url: "/workspace", icon: BrainIcon },
   { title: "Knowledge Vault", url: "/memory", icon: Brain },
+  { title: "Framework OS", url: "/frameworks", icon: FileText },
   { title: "Communications", url: "/email", icon: Mail },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Approval Gate", url: "/approvals", icon: ShieldCheck },
