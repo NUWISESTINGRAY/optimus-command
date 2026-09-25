@@ -779,6 +779,86 @@ export type Database = {
         }
         Relationships: []
       }
+      framework_versions: {
+        Row: {
+          change_notes: string | null
+          content: string
+          created_at: string
+          framework_id: string
+          id: string
+          is_current: boolean
+          user_id: string
+          version: number
+        }
+        Insert: {
+          change_notes?: string | null
+          content?: string
+          created_at?: string
+          framework_id: string
+          id?: string
+          is_current?: boolean
+          user_id?: string
+          version: number
+        }
+        Update: {
+          change_notes?: string | null
+          content?: string
+          created_at?: string
+          framework_id?: string
+          id?: string
+          is_current?: boolean
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "framework_versions_framework_id_fkey"
+            columns: ["framework_id"]
+            isOneToOne: false
+            referencedRelation: "frameworks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      frameworks: {
+        Row: {
+          archived: boolean
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          kind: string
+          name: string
+          slug: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          name: string
+          slug: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          archived?: boolean
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           config: Json | null
@@ -1404,6 +1484,66 @@ export type Database = {
         }
         Relationships: []
       }
+      prompts_maturity: {
+        Row: {
+          created_at: string
+          dimension: string
+          id: string
+          level: number
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dimension: string
+          id?: string
+          level?: number
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          dimension?: string
+          id?: string
+          level?: number
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pulse_assessments: {
+        Row: {
+          assessed_at: string
+          created_at: string
+          id: string
+          notes: string | null
+          scores: Json
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          assessed_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scores?: Json
+          subject?: string
+          user_id?: string
+        }
+        Update: {
+          assessed_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scores?: Json
+          subject?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -1427,6 +1567,87 @@ export type Database = {
           reason?: string
         }
         Relationships: []
+      }
+      task_import_batches: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          source?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      task_import_items: {
+        Row: {
+          batch_id: string
+          created_at: string
+          description: string | null
+          framework_ref: string | null
+          id: string
+          priority: string | null
+          promoted_task_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          description?: string | null
+          framework_ref?: string | null
+          id?: string
+          priority?: string | null
+          promoted_task_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          description?: string | null
+          framework_ref?: string | null
+          id?: string
+          priority?: string | null
+          promoted_task_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_import_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "task_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_import_items_promoted_task_id_fkey"
+            columns: ["promoted_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
