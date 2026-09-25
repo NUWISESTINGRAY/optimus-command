@@ -1592,6 +1592,7 @@ export type Database = {
         Row: {
           created_at: string
           dimension: string
+          entity_id: string | null
           id: string
           level: number
           notes: string | null
@@ -1601,6 +1602,7 @@ export type Database = {
         Insert: {
           created_at?: string
           dimension: string
+          entity_id?: string | null
           id?: string
           level?: number
           notes?: string | null
@@ -1610,18 +1612,29 @@ export type Database = {
         Update: {
           created_at?: string
           dimension?: string
+          entity_id?: string | null
           id?: string
           level?: number
           notes?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "prompts_maturity_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pulse_assessments: {
         Row: {
           assessed_at: string
           created_at: string
+          entity_id: string | null
+          evidence_links: string[]
           id: string
           notes: string | null
           scores: Json
@@ -1631,6 +1644,8 @@ export type Database = {
         Insert: {
           assessed_at?: string
           created_at?: string
+          entity_id?: string | null
+          evidence_links?: string[]
           id?: string
           notes?: string | null
           scores?: Json
@@ -1640,13 +1655,23 @@ export type Database = {
         Update: {
           assessed_at?: string
           created_at?: string
+          entity_id?: string | null
+          evidence_links?: string[]
           id?: string
           notes?: string | null
           scores?: Json
           subject?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pulse_assessments_entity_id_fkey"
+            columns: ["entity_id"]
+            isOneToOne: false
+            referencedRelation: "entities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
