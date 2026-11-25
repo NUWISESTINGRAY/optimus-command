@@ -23,15 +23,7 @@ interface Task {
   due: string;
 }
 
-const sampleTasks: Task[] = [
-  { id: "1", title: "Finalize Q1 board presentation", status: "active", priority: "high", project: "Executive", owner: "You", due: "Mar 18" },
-  { id: "2", title: "Review vendor contract proposals", status: "active", priority: "high", project: "Operations", owner: "You", due: "Mar 19" },
-  { id: "3", title: "Approve marketing campaign assets", status: "todo", priority: "medium", project: "Marketing", owner: "Sarah K.", due: "Mar 20" },
-  { id: "4", title: "Complete hiring pipeline review", status: "todo", priority: "medium", project: "HR", owner: "Mike R.", due: "Mar 21" },
-  { id: "5", title: "Set up analytics dashboard", status: "blocked", priority: "low", project: "Engineering", owner: "Dev Team", due: "Mar 22" },
-  { id: "6", title: "Onboard new enterprise client", status: "done", priority: "high", project: "Sales", owner: "You", due: "Mar 15" },
-  { id: "7", title: "Update SOP documentation", status: "done", priority: "low", project: "Operations", owner: "Lisa P.", due: "Mar 14" },
-];
+const sampleTasks: Task[] = [];
 
 const statusConfig: Record<TaskStatus, { label: string; color: string; bg: string }> = {
   todo: { label: "To Do", color: "text-muted-foreground", bg: "bg-muted/30" },
